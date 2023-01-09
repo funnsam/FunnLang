@@ -6,7 +6,7 @@ use crate::token::{*, TokenKind::*};
 
 use self::nodes::*;
 
-pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser<'static> {
+pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
     let mut p = Parser::new(tok);
     
     while let Some(t) = p.buf.next() {
@@ -33,18 +33,19 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser<'static> {
                         }
                         drop(tmp);
 
-                        let mut args = Vec::new();
+                        let mut func_args = Vec::new();
                         for el in raw_args.into_iter() {
-                            args.push(FuncDefArg{name: el[0].clone(), typ: Type::Name(el[1].clone())})
+                            func_args.push(FuncDefArg{name: el[0].clone(), typ: Type::Name(el[1].clone())})
                         }
 
-                        let mut body = Program { body: Vec::new() };
+                        let mut func_body = Program { body: Vec::new(), escaped: false };
+                        let func_type = Type::Name(p.buf.next().unwrap().str);
                         
-                        p.ast.body.push(Node::FuncDefine {
+                        p.add_node(Node::FuncDefine {
                             func_name: name.str,
-                            func_args: args,
-                            func_type: Type::Name(p.buf.next().unwrap().str),
-                            func_body: body
+                            func_args,
+                            func_type,
+                            func_body,
                         });
                     },
                     "var" => {
@@ -58,7 +59,7 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser<'static> {
                             if a.kind == SemiColon {break;}
                         }
 
-                        p.ast.body.push(
+                        p.add_node(
                             Node::VarDefine {
                                 var_type: Type::Name(typ.str),
                                 var_name: name.str,
@@ -69,6 +70,12 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser<'static> {
                     _ => ()
                 }
             },
+            RCurlyBracket => {
+                match p.find_scope() {
+                    Some(v) => v.escaped = true,
+                    None => panic!()
+                }
+            }
             _ => (),
         }
     }

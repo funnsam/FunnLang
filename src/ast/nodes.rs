@@ -1,6 +1,7 @@
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
-    pub body: Vec<Node>
+    pub body: Vec<Node>,
+    pub escaped: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -30,7 +31,8 @@ pub enum Node {
     },
     For {
         loopv: String,
-        from: Expr, to: Expr
+        from: Expr, to: Expr,
+        body: Program
     },
     Branch {
         cond: Vec<Expr>,
