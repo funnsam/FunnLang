@@ -1,0 +1,3 @@
+func main() u8 {
+    var abc u8 = 123;
+}
