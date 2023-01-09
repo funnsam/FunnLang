@@ -5,7 +5,7 @@ endif
 
 DNAME = target/release/funnlang
 ifeq ($(OS), Windows_NT)
-	FNAME = target/release/funnlang.exe
+	DNAME = target/release/funnlang.exe
 endif
 
 build:
