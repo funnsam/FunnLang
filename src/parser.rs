@@ -89,6 +89,10 @@ impl ParserBuffer {
         self.advance();
         a
     }
+    #[inline]
+    pub fn current(&mut self) -> Option<Token> {
+        self.buf.current()
+    }
 }
 
 impl Iterator for ParserBuffer {

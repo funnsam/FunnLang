@@ -38,8 +38,11 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
                             func_args.push(FuncDefArg{name: el[0].clone(), typ: Type::Name(el[1].clone())})
                         }
 
-                        let mut func_body = Program { body: Vec::new(), escaped: false };
-                        let func_type = Type::Name(p.buf.next().unwrap().str);
+                        let func_body = Program { body: Vec::new(), escaped: false };
+                        let func_type =  match p.buf.buf.current().unwrap().kind {
+                            LCurlyBracket => Type::None,
+                            _ => Type::Name(p.buf.buf.current().unwrap().str),
+                        };
                         
                         p.add_node(Node::FuncDefine {
                             func_name: name.str,
@@ -54,7 +57,7 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
                         if name.kind != Name && typ.kind != Name {todo!()}
                         p.buf.advance();
 
-                        let mut expr: Expr = Expr::Number(p.buf.buf.peek().unwrap().str.parse().unwrap());
+                        let expr: Expr = Expr::Number(p.buf.buf.peek().unwrap().str.parse().unwrap());
                         while let Some(a) = p.buf.next() {
                             if a.kind == SemiColon {break;}
                         }
@@ -66,10 +69,22 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
                                 val_expr: expr
                             }
                         )
-                    }
+                    },
                     _ => ()
                 }
             },
+            Name => {
+                let name = p.buf.current().unwrap().str;
+                match p.buf.next().unwrap().kind {
+                    EqualSign => {
+                        let expr: Expr = Expr::Number(p.buf.buf.peek().unwrap().str.parse().unwrap());
+                        p.add_node(
+                            Node::VarAssign { var_name: name, val_expr: expr }
+                        )
+                    },
+                    _ => panic!()
+                }
+            }
             RCurlyBracket => {
                 match p.find_scope() {
                     Some(v) => v.escaped = true,

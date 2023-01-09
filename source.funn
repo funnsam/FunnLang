@@ -1,8 +1,9 @@
-func main() u8 {
-    var abc u8 = 123;
-    var def u16 = 456;
+func main() uint {
+    var abc uint = 123;
+    var def uint = 456;
+    stuff(abc + def);
 }
-func stuff() u8 {
-    var ab u8 = 123;
-    var de u16 = 456;
+func stuff(uint c) {
+    var a uint = 123;
+    var b uint = 456;
 }
