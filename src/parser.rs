@@ -17,44 +17,62 @@ impl Parser {
             ast,
         }
     }
+
     pub fn add_node(&mut self, node: Node) {
-        match self.find_scope() {
-            Some(v) => v.body.push(node),
-            None => self.ast.body.push(node)
-        };
+        self.find_scope().body.push(node)
     }
 
-    pub fn find_scope(&mut self) -> Option<&mut Program> {
-        let mut scope: Option<&mut Program> = None;
-        'find_scope: for el in self.ast.body.iter_mut().rev() {
+    pub fn find_scope(&mut self) -> &mut Program {
+        let mut scope: &mut Program = &mut self.ast;
+        while let Some(a) = find_scope_from_program(scope) {scope = a}
+        scope
+    }
+
+    pub fn find_branch_block(&mut self) -> Option<&mut Node> {
+        let mut last: Option<&mut Node> = None;
+        for el in self.ast.body.iter_mut().rev() {
             match el {
-                Node::FuncDefine { func_name: _, func_args: _, func_type: _, func_body } => {
-                    if func_body.escaped {continue;}
-                    scope = Some(func_body);
+                Node::Branch { cond: _, body:_ } => {
+                    last = Some(el);
                     break;
-                },
-                Node::For { loopv: _, from: _, to: _, body } => {
-                    if body.escaped {continue;}
-                    scope = Some(body);
-                    break;
-                },
-                Node::While { cond: _, body } => {
-                    if body.escaped {continue;}
-                    scope = Some(body);
-                    break;
-                },
-                Node::Branch { cond: _, body } => {
-                    for el in body.iter_mut().rev() {
-                        if el.escaped {continue;}
-                        scope = Some(el);
-                        break 'find_scope;
-                    };
                 }
                 _ => (),
             }
         };
-        scope
+        last
     }
+}
+
+fn find_scope_from_program(p: &mut Program) -> Option<&mut Program> {
+    let mut scope: Option<&mut Program> = None;
+    'find_scope_loop: for el in p.body.iter_mut().rev() {
+        match el {
+            Node::FuncDefine { func_name: _, func_args: _, func_type: _, func_body } => {
+                if func_body.escaped {continue;}
+                scope = Some(func_body);
+                break;
+            },
+            Node::For { loopv: _, from: _, to: _, body } => {
+                if body.escaped {continue;}
+                scope = Some(body);
+                break;
+            },
+            Node::While { cond: _, body } => {
+                if body.escaped {continue;}
+                scope = Some(body);
+                break;
+            },
+            Node::Branch { cond: _, body } => {
+                for el in body.iter_mut().rev() {
+                    if el.escaped {continue;}
+                    scope = Some(el);
+                    break 'find_scope_loop;
+                };
+            }
+            _ => (),
+        }
+    };
+    scope
 }
 
 #[derive(Debug)]

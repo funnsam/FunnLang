@@ -68,6 +68,48 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
                             }
                         )
                     },
+                    "if" => {
+                        p.buf.advance();
+                        while let Some(t) = p.buf.next() {
+                            if t.kind == RParenthesis {break}
+                        }
+                        p.buf.advance();
+                        p.add_node(
+                            Node::Branch {
+                                cond: vec![Expr::Number(1)],
+                                body: vec![Program { body: Vec::new(), escaped: false }]
+                            }
+                        )
+                    },
+                    "else" => {
+                        match p.buf.buf.peek().unwrap().str.as_str() {
+                            "if" => {
+                                p.buf.advance();
+                                p.buf.advance();
+                                while let Some(t) = p.buf.next() {
+                                    if t.kind == RParenthesis {break}
+                                }
+                                p.buf.advance();
+                                match p.find_branch_block().unwrap() {
+                                    Node::Branch { cond, body } => {
+                                        cond.push(Expr::Number(1));
+                                        body.push(Program { body: Vec::new(), escaped: false });
+                                        p.buf.advance()
+                                    },
+                                    _ => todo!(),
+                                }
+                            },
+                            _ => {
+                                match p.find_branch_block().unwrap() {
+                                    Node::Branch { cond: _, body } => {
+                                        body.push(Program { body: Vec::new(), escaped: false });
+                                        p.buf.advance()
+                                    },
+                                    _ => todo!(),
+                                }
+                            }
+                        }
+                    }
                     _ => ()
                 }
             },
@@ -96,16 +138,14 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
                             args.push(parse_expr(&mut Buffer::new(el)))
                         }
 
-                        p.add_node(Node::FuncCall { func_name: name, func_args: args })
+                        p.add_node(Node::FuncCall { func_name: name, func_args: args });
+                        println!("{:#?}", p.ast)
                     },
                     _ => (),
                 }
             }
             RCurlyBracket => {
-                match p.find_scope() {
-                    Some(v) => v.escaped = true,
-                    None => ()
-                }
+                p.find_scope().escaped = true
             },
             SemiColon => (),
             _ => {

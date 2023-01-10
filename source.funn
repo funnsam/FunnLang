@@ -1,6 +1,9 @@
 func main() uint {
     var abc uint = 123;
     var def uint = 456;
+    if (123) {
+        stuff(123);
+    }
     stuff(123);
 }
 func stuff(c uint) void {
