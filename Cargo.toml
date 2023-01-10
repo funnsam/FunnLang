@@ -8,3 +8,10 @@ repository = "https://github.com/funnsam/funnlang"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+
+[profile.release]
+lto = true
+overflow-checks = false
+
+[profile.dev]
+overflow-checks = false

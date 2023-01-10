@@ -85,13 +85,16 @@ impl ParserBuffer {
     }
     #[inline]
     pub fn next(&mut self) -> Option<Token> {
-        let a = self.buf.current();
         self.advance();
-        a
+        self.buf.current()
     }
     #[inline]
     pub fn current(&mut self) -> Option<Token> {
         self.buf.current()
+    }
+    #[inline]
+    pub fn peek_prev(&mut self) -> &Token {
+        &self.buf.data[self.buf.index-1]
     }
 }
 

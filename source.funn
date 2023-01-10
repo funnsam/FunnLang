@@ -1,9 +1,9 @@
 func main() uint {
     var abc uint = 123;
     var def uint = 456;
-    stuff(abc + def);
 }
-func stuff(uint c) {
+func stuff(c uint) void {
     var a uint = 123;
     var b uint = 456;
+    c = 123;
 }

@@ -8,6 +8,8 @@ use self::nodes::*;
 
 pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
     let mut p = Parser::new(tok);
+
+    p.buf.buf.index -= 1;
     
     while let Some(t) = p.buf.next() {
         match t.kind {
@@ -19,7 +21,7 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
                         if p.buf.next().unwrap().kind != LParenthesis {todo!()}
                         
                         let mut raw_args: Vec<Vec<String>> = Vec::new();
-                        let mut tmp = Vec::new();
+                        let mut tmp = Vec::with_capacity(2);
                         while let Some(t) = p.buf.next() {
                             if t.kind == RParenthesis {
                                 if !tmp.is_empty() {raw_args.push(tmp.clone())}
@@ -39,10 +41,7 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
                         }
 
                         let func_body = Program { body: Vec::new(), escaped: false };
-                        let func_type =  match p.buf.buf.current().unwrap().kind {
-                            LCurlyBracket => Type::None,
-                            _ => Type::Name(p.buf.buf.current().unwrap().str),
-                        };
+                        let func_type = Type::Name(p.buf.next().unwrap().str.clone());
                         
                         p.add_node(Node::FuncDefine {
                             func_name: name.str,
@@ -56,11 +55,8 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
                         let typ  = p.buf.next().unwrap();
                         if name.kind != Name && typ.kind != Name {todo!()}
                         p.buf.advance();
-
-                        let expr: Expr = Expr::Number(p.buf.buf.peek().unwrap().str.parse().unwrap());
-                        while let Some(a) = p.buf.next() {
-                            if a.kind == SemiColon {break;}
-                        }
+                        p.buf.advance();
+                        let expr = parse_expr(&mut p);
 
                         p.add_node(
                             Node::VarDefine {
@@ -77,22 +73,31 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
                 let name = p.buf.current().unwrap().str;
                 match p.buf.next().unwrap().kind {
                     EqualSign => {
-                        let expr: Expr = Expr::Number(p.buf.buf.peek().unwrap().str.parse().unwrap());
+                        p.buf.advance();
+                        let expr = parse_expr(&mut p);
                         p.add_node(
                             Node::VarAssign { var_name: name, val_expr: expr }
-                        )
+                        );
                     },
-                    _ => panic!()
+                    _ => (),
                 }
             }
             RCurlyBracket => {
                 match p.find_scope() {
                     Some(v) => v.escaped = true,
-                    None => panic!()
+                    None => ()
                 }
             }
             _ => (),
         }
     }
     p
+}
+
+fn parse_expr(p: &mut Parser) -> Expr {
+    let expr: Expr = Expr::Number(p.buf.buf.peek().unwrap().str.parse().unwrap());
+    while let Some(a) = p.buf.next() {
+        if a.kind == SemiColon {break;}
+    };
+    expr
 }
