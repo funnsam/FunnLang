@@ -139,7 +139,6 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
                         }
 
                         p.add_node(Node::FuncCall { func_name: name, func_args: args });
-                        println!("{:#?}", p.ast)
                     },
                     _ => (),
                 }

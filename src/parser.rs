@@ -23,29 +23,32 @@ impl Parser {
     }
 
     pub fn find_scope(&mut self) -> &mut Program {
-        let mut scope: &mut Program = &mut self.ast;
+        let mut scope: &Program = &self.ast;
         while let Some(a) = find_scope_from_program(scope) {scope = a}
-        scope
+        unsafe{
+            let a = scope as *const Program as *mut Program;
+            &mut *a
+        }
     }
 
     pub fn find_branch_block(&mut self) -> Option<&mut Node> {
         let mut last: Option<&mut Node> = None;
-        for el in self.ast.body.iter_mut().rev() {
-            match el {
-                Node::Branch { cond: _, body:_ } => {
-                    last = Some(el);
-                    break;
-                }
-                _ => (),
-            }
-        };
+//        for el in self.ast.body.iter_mut().rev() {
+//            match el {
+//                Node::Branch { cond: _, body:_ } => {
+//                    last = Some(el);
+//                    break;
+//                }
+//                _ => (),
+//            }
+//        };
         last
     }
 }
 
-fn find_scope_from_program(p: &mut Program) -> Option<&mut Program> {
-    let mut scope: Option<&mut Program> = None;
-    'find_scope_loop: for el in p.body.iter_mut().rev() {
+fn find_scope_from_program(p: &Program) -> Option<&Program> {
+    let mut scope: Option<&Program> = None;
+    'find_scope_loop: for el in p.body.iter().rev() {
         match el {
             Node::FuncDefine { func_name: _, func_args: _, func_type: _, func_body } => {
                 if func_body.escaped {continue;}
@@ -63,7 +66,7 @@ fn find_scope_from_program(p: &mut Program) -> Option<&mut Program> {
                 break;
             },
             Node::Branch { cond: _, body } => {
-                for el in body.iter_mut().rev() {
+                for el in body.iter().rev() {
                     if el.escaped {continue;}
                     scope = Some(el);
                     break 'find_scope_loop;
