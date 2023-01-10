@@ -51,7 +51,6 @@ pub struct FuncDefArg {
 pub enum Type {
     Name(String),
     Ptr(Box<Type>),
-    None,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -79,5 +78,6 @@ pub enum Expr {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum MathOp {
-    Add, Sub, Mul, Div, Mod
+    Add, Sub, Mul, Div, Mod,
+    And, Or , Not, XOr,
 }

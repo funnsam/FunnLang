@@ -8,16 +8,25 @@ pub fn lex(s: &mut Scanner) -> Buffer<Token> {
             'a'..='z' | 'A'..='Z' => {
                 s._while(|c| c.is_alphanumeric());
                 match s.str().to_lowercase().as_str() {
-                    "if"  | "elseif" | "else" |
-                    "var" |
-                    "for" | "while" | "func" |
+                    "if"    | "else"    |
+                    "var"   |
+                    "for"   | "while"   | "break"   | "continue"    |
+                    "func"  | "return"  |
                     "asm" => s.create(Keyword),
                     
                     _   => s.create(Name)
                 }
             },
             '0'..='9' => {let a = parse_number(s, 0).unwrap_or(0); s.create(Number(a));}
-            '+' | '-' | '*' | '/' | '%' => s.create(MathSymbol),
+            '+' | '-' | '*' | '/' | '%' | '^' | '!' => s.create(MathSymbol),
+            '&' => {
+                if s._if(|c| c == '&') {
+                    s.create(MathSymbol)
+                } else {
+                    s.create(Ampersand)
+                }
+            },
+            '|' => {s._if(|c| c == '|'); s.create(MathSymbol)}
             ' ' | '\t' | '\r' | '\n' => { s._while(|c| c.is_whitespace()); s.create(Space)},
             '.' => {if s._if(|c| c == '.') {s.create(To)} else {todo!()}}
             ',' => s.create(Comma),
@@ -29,7 +38,20 @@ pub fn lex(s: &mut Scanner) -> Buffer<Token> {
             ')' => s.create(RParenthesis),
             ';' => s.create(SemiColon),
             '=' => {if s._if(|c| c == '=') { s.create(Logic) } else { s.create(EqualSign) }},
-            '<' | '>' => {s._if(|c| c == '='); s.create(Logic)},
+            '<' => {
+                if s._if(|c| c == '=') {
+                    s.create(Logic)
+                } else if s._if(|c| c == '<') {
+                    s.create(MathSymbol)
+                }
+            },
+            '>' => {
+                if s._if(|c| c == '=') {
+                    s.create(Logic)
+                } else if s._if(|c| c == '>') {
+                    s.create(MathSymbol)
+                }
+            },
             '\'' => {
                 let a = s.next().unwrap();      // TODO error checking
                 if a == '\\' {

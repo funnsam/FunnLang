@@ -92,10 +92,6 @@ impl ParserBuffer {
     pub fn current(&mut self) -> Option<Token> {
         self.buf.current()
     }
-    #[inline]
-    pub fn peek_prev(&mut self) -> &Token {
-        &self.buf.data[self.buf.index-1]
-    }
 }
 
 impl Iterator for ParserBuffer {

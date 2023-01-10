@@ -1,5 +1,7 @@
 pub mod nodes;
 
+use std::os::raw;
+
 use crate::parser::*;
 use crate::buffer::*;
 use crate::token::{*, TokenKind::*};
@@ -49,14 +51,14 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
                             func_type,
                             func_body,
                         });
+                        p.buf.advance();
                     },
                     "var" => {
                         let name = p.buf.next().unwrap();
                         let typ  = p.buf.next().unwrap();
                         if name.kind != Name && typ.kind != Name {todo!()}
                         p.buf.advance();
-                        p.buf.advance();
-                        let expr = parse_expr(&mut p);
+                        let expr = parse_expr_from_parser(&mut p, &vec![SemiColon]);
 
                         p.add_node(
                             Node::VarDefine {
@@ -73,11 +75,28 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
                 let name = p.buf.current().unwrap().str;
                 match p.buf.next().unwrap().kind {
                     EqualSign => {
-                        p.buf.advance();
-                        let expr = parse_expr(&mut p);
+                        let expr = parse_expr_from_parser(&mut p, &vec![SemiColon]);
                         p.add_node(
                             Node::VarAssign { var_name: name, val_expr: expr }
                         );
+                    },
+                    LParenthesis => {
+                        let mut raw_args: Vec<Vec<Token>> = vec![Vec::new()];
+                        
+                        while let Some(a) = p.buf.next() {
+                            match a.kind {
+                                RParenthesis => break,
+                                Comma => raw_args.push(Vec::new()),
+                                _ => raw_args.last_mut().unwrap().push(a),
+                            }
+                        }
+                        
+                        let mut args: Vec<Expr> = Vec::new();
+                        for el in raw_args.into_iter() {
+                            args.push(parse_expr(&mut Buffer::new(el)))
+                        }
+
+                        p.add_node(Node::FuncCall { func_name: name, func_args: args })
                     },
                     _ => (),
                 }
@@ -87,17 +106,27 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
                     Some(v) => v.escaped = true,
                     None => ()
                 }
-            }
-            _ => (),
+            },
+            SemiColon => (),
+            _ => {
+                println!("Debug: Unexpected {:?}.", t)
+            },
         }
     }
     p
 }
 
-fn parse_expr(p: &mut Parser) -> Expr {
-    let expr: Expr = Expr::Number(p.buf.buf.peek().unwrap().str.parse().unwrap());
+fn parse_expr_from_parser(p: &mut Parser, stop_tokens: &Vec<TokenKind>) -> Expr {
+    let mut tmp = Vec::new();
     while let Some(a) = p.buf.next() {
-        if a.kind == SemiColon {break;}
+        if stop_tokens.contains(&a.kind) {break;}
+        tmp.push(a);
     };
+    parse_expr(&mut Buffer::new(tmp))
+}
+
+fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
+    let expr: Expr = Expr::Number(toks.peek().unwrap().str.parse().unwrap_or(0));
+    while let Some(_) = toks.next() {};
     expr
 }
