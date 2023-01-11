@@ -50,7 +50,8 @@ pub struct FuncDefArg {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Name(String),
-    Ptr(Box<Type>),
+    Pointer(Box<Type>),
+    Array(Box<Type>, usize)
 }
 
 #[derive(Debug, Clone, PartialEq)]

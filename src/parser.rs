@@ -1,6 +1,9 @@
+use core::panic;
+
 use crate::ast::nodes::Node;
 use crate::ast::nodes::Program;
 use crate::buffer::*;
+use crate::fuck_mut;
 use crate::token::*;
 
 #[derive(Debug)]
@@ -25,25 +28,28 @@ impl Parser {
     pub fn find_scope(&mut self) -> &mut Program {
         let mut scope: &Program = &self.ast;
         while let Some(a) = find_scope_from_program(scope) {scope = a}
-        unsafe{
-            let a = scope as *const Program as *mut Program;
-            &mut *a
-        }
+        fuck_mut(scope)
     }
 
-    pub fn find_branch_block(&mut self) -> Option<&mut Node> {
-        let mut last: Option<&mut Node> = None;
-//        for el in self.ast.body.iter_mut().rev() {
-//            match el {
-//                Node::Branch { cond: _, body:_ } => {
-//                    last = Some(el);
-//                    break;
-//                }
-//                _ => (),
-//            }
-//        };
-        last
+    pub fn find_branch_block(&mut self) -> &mut Node {
+        let scope = self.find_scope();
+        let last = find_branch(scope).unwrap();
+        fuck_mut(last)
     }
+}
+
+fn find_branch(p: &Program) -> Option<&Node> {
+    let mut last: Option<&Node> = None;
+    for el in p.body.iter().rev() {
+        match el {
+            Node::Branch { cond: _, body:_ } => {
+                last = Some(&el);
+                break;
+            }
+            _ => (),
+        }
+    };
+    last
 }
 
 fn find_scope_from_program(p: &Program) -> Option<&Program> {
@@ -52,17 +58,17 @@ fn find_scope_from_program(p: &Program) -> Option<&Program> {
         match el {
             Node::FuncDefine { func_name: _, func_args: _, func_type: _, func_body } => {
                 if func_body.escaped {continue;}
-                scope = Some(func_body);
+                scope = Some(&func_body);
                 break;
             },
             Node::For { loopv: _, from: _, to: _, body } => {
                 if body.escaped {continue;}
-                scope = Some(body);
+                scope = Some(&body);
                 break;
             },
             Node::While { cond: _, body } => {
                 if body.escaped {continue;}
-                scope = Some(body);
+                scope = Some(&body);
                 break;
             },
             Node::Branch { cond: _, body } => {

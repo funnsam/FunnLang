@@ -1,13 +1,17 @@
 func main() uint {
-    var abc uint = 123;
-    var def uint = 456;
     if (123) {
         stuff(123);
+    } else if (456) {
+        stuff(456);
+    } else {
+        stuff(def);
+        panic();
     }
-    stuff(123);
 }
 func stuff(c uint) void {
     var a uint = 123;
-    var b uint = 456;
-    c = 123;
+    var b uint;
+    b = 456;
+
+    asm "JMP 0";
 }

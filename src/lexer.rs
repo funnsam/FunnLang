@@ -55,10 +55,7 @@ pub fn lex(s: &mut Scanner) -> Buffer<Token> {
             '\'' => {
                 let a = s.next().unwrap();      // TODO error checking
                 if a == '\\' {
-                    let b = match s.next().unwrap() {
-                        'n' => '\n', 't' => '\t', 'r' => '\r', '\'' => '\'',
-                        _ => todo!()
-                    };
+                    let b = parse_escape(s);
                     if s.next().unwrap() != '\'' {todo!()}
                     s.create(Char(b))
                 } else {
@@ -67,11 +64,18 @@ pub fn lex(s: &mut Scanner) -> Buffer<Token> {
                 }
             },
             '"' => {
+                let mut str = String::new();
                 while let Some(c) = s.next() {
                     match c {
                         '\n' | '\r' => todo!(),
-                        '"' => {s.create(Str); break;},
-                        _ => continue,
+                        '"'  => {s.create(Str(str)); break;},
+                        '\\' => {
+                            let a = parse_escape(s);
+                            str.push(a)
+                        }
+                        _ => {
+                            str.push(c);
+                        },
                     }
                 }
             },
@@ -79,6 +83,13 @@ pub fn lex(s: &mut Scanner) -> Buffer<Token> {
         }
     };
     Buffer::new(s.toks.clone())
+}
+
+fn parse_escape(s: &mut Scanner) -> char {
+    match s.next().unwrap() {
+        'n' => '\n', 't' => '\t', 'r' => '\r', '\'' => '\'',
+        _ => s.buf.current().unwrap()
+    }
 }
 
 fn parse_number(s: &mut Scanner, skip: usize) -> Option<i64> {

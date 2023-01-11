@@ -1,7 +1,5 @@
 pub mod nodes;
 
-use std::os::raw;
-
 use crate::parser::*;
 use crate::buffer::*;
 use crate::token::{*, TokenKind::*};
@@ -82,6 +80,7 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
                         )
                     },
                     "else" => {
+                        p.buf.advance();
                         match p.buf.buf.peek().unwrap().str.as_str() {
                             "if" => {
                                 p.buf.advance();
@@ -90,26 +89,34 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
                                     if t.kind == RParenthesis {break}
                                 }
                                 p.buf.advance();
-                                match p.find_branch_block().unwrap() {
+                                match p.find_branch_block() {
                                     Node::Branch { cond, body } => {
                                         cond.push(Expr::Number(1));
                                         body.push(Program { body: Vec::new(), escaped: false });
-                                        p.buf.advance()
                                     },
                                     _ => todo!(),
                                 }
                             },
                             _ => {
-                                match p.find_branch_block().unwrap() {
+                                match p.find_branch_block() {
                                     Node::Branch { cond: _, body } => {
                                         body.push(Program { body: Vec::new(), escaped: false });
-                                        p.buf.advance()
                                     },
                                     _ => todo!(),
                                 }
                             }
                         }
-                    }
+                    },
+                    "asm" => {
+                        let asm_blk = match p.buf.next().unwrap().kind {
+                            Str(s) => s,
+                            _ => panic!()
+                        };
+                        p.buf.advance();
+                        p.add_node(Node::AsmBlock(
+                            asm_blk
+                        ))
+                    },
                     _ => ()
                 }
             },
@@ -135,9 +142,12 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
                         
                         let mut args: Vec<Expr> = Vec::new();
                         for el in raw_args.into_iter() {
-                            args.push(parse_expr(&mut Buffer::new(el)))
+                            if !el.is_empty() {
+                                args.push(parse_expr(&mut Buffer::new(el)))
+                            }
                         }
 
+                        p.buf.advance();
                         p.add_node(Node::FuncCall { func_name: name, func_args: args });
                     },
                     _ => (),
@@ -146,7 +156,6 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
             RCurlyBracket => {
                 p.find_scope().escaped = true
             },
-            SemiColon => (),
             _ => {
                 println!("Debug: Unexpected {:?}.", t)
             },
@@ -165,7 +174,11 @@ fn parse_expr_from_parser(p: &mut Parser, stop_tokens: &Vec<TokenKind>) -> Expr 
 }
 
 fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
-    let expr: Expr = Expr::Number(toks.peek().unwrap().str.parse().unwrap_or(0));
+    let expr: Expr = match toks.peek().unwrap().kind {
+        Number(v) => Expr::Number(v),
+        Name => Expr::Ident(toks.peek().unwrap().str),
+        _ => panic!()
+    };
     while let Some(_) = toks.next() {};
     expr
 }

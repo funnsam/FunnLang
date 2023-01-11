@@ -17,3 +17,9 @@ fn main() {
     let ast = generate_ast(tok, src);
     println!("{:#?}", ast.ast);
 }
+
+pub fn fuck_mut<T>(a: &T) -> &mut T {
+    unsafe {
+        &mut *(a as *const T as *mut T)
+    }
+}

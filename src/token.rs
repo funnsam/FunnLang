@@ -10,6 +10,6 @@ pub enum TokenKind {
     Space,
     Comma, SemiColon, EqualSign, MathSymbol, Logic, To, Ampersand,
     LCurlyBracket, RCurlyBracket, LBracket, RBracket, LParenthesis, RParenthesis,
-    Char(char), Str,
+    Char(char), Str(String),
     Unknown,
 }
