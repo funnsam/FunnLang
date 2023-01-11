@@ -66,6 +66,34 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
                             }
                         )
                     },
+                    "while" => {
+                        p.buf.advance();
+                        while let Some(t) = p.buf.next() {
+                            if t.kind == RParenthesis {break}
+                        }
+                        p.buf.advance();
+                        p.add_node(
+                            Node::While {
+                                cond: Expr::Number(1),
+                                body: Program { body: Vec::new(), escaped: false }
+                            }
+                        )
+                    },
+                    "for" => {
+                        p.buf.advance();
+                        let lv = p.buf.next().unwrap().str;
+                        p.buf.advance();
+                        let from = parse_expr_from_parser(&mut p, &vec![To]);
+                        let to = parse_expr_from_parser(&mut p, &vec![RParenthesis]);
+                        p.add_node(
+                            Node::For {
+                                loopv: lv,
+                                from,
+                                to,
+                                body : Program { body: Vec::new(), escaped: false }
+                            }
+                        )
+                    },
                     "if" => {
                         p.buf.advance();
                         while let Some(t) = p.buf.next() {
@@ -174,11 +202,52 @@ fn parse_expr_from_parser(p: &mut Parser, stop_tokens: &Vec<TokenKind>) -> Expr 
 }
 
 fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
-    let expr: Expr = match toks.peek().unwrap().kind {
-        Number(v) => Expr::Number(v),
-        Name => Expr::Ident(toks.peek().unwrap().str),
-        _ => panic!()
-    };
-    while let Some(_) = toks.next() {};
+    fn get_precedence(a: &Token) -> u8 {
+        match a.str.chars().next().unwrap() {
+            '+' | '-' => 1,
+            '*' | '/' => 2,
+            '&' | '|' | '^' => 3,
+            _ => 0
+        }
+    }
+
+    let mut expr: Expr = Expr::Number(0);
+    let mut output_queue = Vec::new();
+    let mut op_stack: Vec<Token> = Vec::new();
+
+    // = match toks.peek().unwrap().kind {
+    //     Number(v) => Expr::Number(v),
+    //     Name => Expr::Ident(toks.peek().unwrap().str),
+    //     _ => panic!("Bruh {:?}", toks.peek().unwrap())
+    // };
+
+    while let Some(a) = toks.next() {
+        match a.kind {
+            Number(_) | Name => output_queue.push(a),
+            MathSymbol => {
+                while let Some(b) = op_stack.pop() {
+                    if b.kind != LParenthesis && get_precedence(&b) >= get_precedence(&a) {
+                        output_queue.push(b);
+                    } else {
+                        break
+                    }
+                };
+                op_stack.push(a)
+            }
+            LParenthesis => op_stack.push(a),
+            RParenthesis => {
+                while let Some(v) = op_stack.pop() {
+                    if v.kind == LParenthesis {
+                        break;
+                    }
+                    output_queue.push(v)
+                }
+            }
+            _ => panic!("Bruh {:?}", a),
+        }
+    }
+    output_queue.append(&mut op_stack);
+
+    println!("{:?}", output_queue);
     expr
 }
