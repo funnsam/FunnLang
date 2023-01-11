@@ -11,7 +11,7 @@ func main() uint {
 func stuff(c uint) void {
     var a uint = 123;
     var b uint = 456;
-    b = 3 + 4 * 2 / (1-5);
+    b = 3 + 4 * 2 / 1;
 
     while (1) {
         for (i: 2..3)

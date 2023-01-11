@@ -212,8 +212,8 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
     }
 
     let mut expr: Expr = Expr::Number(0);
-    let mut output_queue = Vec::new();
-    let mut op_stack: Vec<Token> = Vec::new();
+    let mut output = Vec::new();
+    let mut op_stk: Vec<Token> = Vec::new();
 
     // = match toks.peek().unwrap().kind {
     //     Number(v) => Expr::Number(v),
@@ -223,31 +223,77 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
 
     while let Some(a) = toks.next() {
         match a.kind {
-            Number(_) | Name => output_queue.push(a),
+            Number(_) | Name => output.push(a),
             MathSymbol => {
-                while let Some(b) = op_stack.pop() {
+                while let Some(b) = op_stk.pop() {
                     if b.kind != LParenthesis && get_precedence(&b) >= get_precedence(&a) {
-                        output_queue.push(b);
+                        output.push(b);
                     } else {
                         break
                     }
                 };
-                op_stack.push(a)
+                op_stk.push(a)
             }
-            LParenthesis => op_stack.push(a),
+            LParenthesis => op_stk.push(a),
             RParenthesis => {
-                while let Some(v) = op_stack.pop() {
+                while let Some(v) = op_stk.pop() {
                     if v.kind == LParenthesis {
                         break;
                     }
-                    output_queue.push(v)
+                    output.push(v)
                 }
             }
             _ => panic!("Bruh {:?}", a),
         }
     }
-    output_queue.append(&mut op_stack);
+    output.append(&mut op_stk);
 
-    println!("{:?}", output_queue);
+    #[derive(Debug)]
+    enum ExprTmp {
+        Number(i64),
+        Ident(String),
+        Math(MathOp)
+    }
+
+    let mut exprs_1 = Vec::new();
+
+    for el in output.into_iter() {
+        match el.kind {
+            Number(v) => exprs_1.push(ExprTmp::Number(v)),
+            Name => exprs_1.push(ExprTmp::Ident(el.str)),
+            MathSymbol => exprs_1.push(ExprTmp::Math(match el.str.chars().next().unwrap() {
+                '+' => MathOp::Add, '-' => MathOp::Sub, '*' => MathOp::Mul, '/' => MathOp::Div,
+                '%' => MathOp::Mod, '&' => MathOp::And, '|' => MathOp::Or , '^' => MathOp::XOr,
+                _ => panic!()
+            })),
+            _ => panic!()
+        }
+    }
+
+    println!("{:?}", exprs_1);
+
+    let mut tmp1 = Vec::new();
+    let mut tmp2 = Vec::new();
+    for el in exprs_1.into_iter() {
+        match el {
+            ExprTmp::Number(_) | ExprTmp::Ident(_) => tmp1.push(el),
+            ExprTmp::Math(m) => {
+                println!("{:?}", tmp1);
+                let last_2 = match tmp1.pop().unwrap() {
+                    ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v),
+                    _ => panic!()
+                };
+                let last_1 = match tmp1.pop().unwrap() {
+                    ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v),
+                    _ => panic!()
+                };
+
+                tmp2.push(Expr::Math { left: Box::new(last_1), oper: m, right: Box::new(last_2) })
+            }
+        }
+    }
+
+    println!("{:?}", tmp2);
+
     expr
 }
