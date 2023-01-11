@@ -274,19 +274,16 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
             ExprTmp::Number(_) | ExprTmp::Ident(_) => tmp1.push(el),
             ExprTmp::Math(m) => {
                 println!("{:?}\n{:?}", tmp1, tmp2);
-                if tmp1.len() == 0 {
-                } else {
-                    let last_2 = match tmp1.pop().unwrap() {
-                        ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v),
-                        _ => panic!()
-                    };
-                    let last_1 = match tmp1.pop().unwrap() {
-                        ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v),
-                        _ => panic!()
-                    };
+                let last_2 = match tmp1.pop().unwrap() {
+                    ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v),
+                    _ => panic!()
+                };
+                let last_1 = match tmp1.pop().unwrap() {
+                    ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v),
+                    _ => panic!()
+                };
 
-                    tmp2.push(Expr::Math { left: Box::new(last_1), oper: m, right: Box::new(last_2) })
-                }
+                tmp2.push(Expr::Math { left: Box::new(last_1), oper: m, right: Box::new(last_2) })
             }
         }
     }
