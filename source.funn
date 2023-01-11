@@ -13,5 +13,5 @@ func stuff(c uint) void {
     var b uint;
     b = 456;
 
-    asm "JMP 0";
+    asm "NOP";
 }

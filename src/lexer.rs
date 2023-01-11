@@ -70,8 +70,7 @@ pub fn lex(s: &mut Scanner) -> Buffer<Token> {
                         '\n' | '\r' => todo!(),
                         '"'  => {s.create(Str(str)); break;},
                         '\\' => {
-                            let a = parse_escape(s);
-                            str.push(a)
+                            str.push(parse_escape(s))
                         }
                         _ => {
                             str.push(c);
@@ -87,8 +86,8 @@ pub fn lex(s: &mut Scanner) -> Buffer<Token> {
 
 fn parse_escape(s: &mut Scanner) -> char {
     match s.next().unwrap() {
-        'n' => '\n', 't' => '\t', 'r' => '\r', '\'' => '\'',
-        _ => s.buf.current().unwrap()
+        'n' => '\n', 't' => '\t', 'r' => '\r', '\'' => '\'', '"' => '"',
+        _ => panic!()
     }
 }
 
