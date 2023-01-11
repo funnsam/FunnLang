@@ -211,7 +211,6 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
         }
     }
 
-    let mut expr: Expr = Expr::Number(0);
     let mut output = Vec::new();
     let mut op_stk: Vec<Token> = Vec::new();
 
@@ -247,7 +246,8 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
     enum ExprTmp {
         Number(i64),
         Ident(String),
-        Math(MathOp)
+        Math(MathOp),
+        Expr(Expr)
     }
 
     let mut exprs_1 = Vec::new();
@@ -265,30 +265,32 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
         }
     }
 
-    println!("{:?}", exprs_1);
-
     let mut tmp1 = Vec::new();
-    let mut tmp2 = Vec::new();
+
     for el in exprs_1.into_iter() {
         match el {
             ExprTmp::Number(_) | ExprTmp::Ident(_) => tmp1.push(el),
             ExprTmp::Math(m) => {
-                println!("{:?}\n{:?}", tmp1, tmp2);
                 let last_2 = match tmp1.pop().unwrap() {
-                    ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v),
+                    ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
                     _ => panic!()
                 };
                 let last_1 = match tmp1.pop().unwrap() {
-                    ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v),
+                    ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
                     _ => panic!()
                 };
 
-                tmp2.push(Expr::Math { left: Box::new(last_1), oper: m, right: Box::new(last_2) })
-            }
+                tmp1.push(ExprTmp::Expr(Expr::Math { left: Box::new(last_1), oper: m, right: Box::new(last_2) }))
+            },
+
+            ExprTmp::Expr(_) => ()
         }
     }
 
-    println!("{:?}", tmp2);
-
-    expr
+    match &tmp1[0] {
+        ExprTmp::Number(v) => Expr::Number(*v),
+        ExprTmp::Ident(v)  => Expr::Ident(v.clone()),
+        ExprTmp::Expr(v)   => v.clone(),
+        _ => panic!()
+    }
 }
