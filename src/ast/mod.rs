@@ -215,12 +215,6 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
     let mut output = Vec::new();
     let mut op_stk: Vec<Token> = Vec::new();
 
-    // = match toks.peek().unwrap().kind {
-    //     Number(v) => Expr::Number(v),
-    //     Name => Expr::Ident(toks.peek().unwrap().str),
-    //     _ => panic!("Bruh {:?}", toks.peek().unwrap())
-    // };
-
     while let Some(a) = toks.next() {
         match a.kind {
             Number(_) | Name => output.push(a),
@@ -229,6 +223,7 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
                     if b.kind != LParenthesis && get_precedence(&b) >= get_precedence(&a) {
                         output.push(b);
                     } else {
+                        op_stk.push(b);
                         break
                     }
                 };
@@ -278,17 +273,20 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
         match el {
             ExprTmp::Number(_) | ExprTmp::Ident(_) => tmp1.push(el),
             ExprTmp::Math(m) => {
-                println!("{:?}", tmp1);
-                let last_2 = match tmp1.pop().unwrap() {
-                    ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v),
-                    _ => panic!()
-                };
-                let last_1 = match tmp1.pop().unwrap() {
-                    ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v),
-                    _ => panic!()
-                };
+                println!("{:?}\n{:?}", tmp1, tmp2);
+                if tmp1.len() == 0 {
+                } else {
+                    let last_2 = match tmp1.pop().unwrap() {
+                        ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v),
+                        _ => panic!()
+                    };
+                    let last_1 = match tmp1.pop().unwrap() {
+                        ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v),
+                        _ => panic!()
+                    };
 
-                tmp2.push(Expr::Math { left: Box::new(last_1), oper: m, right: Box::new(last_2) })
+                    tmp2.push(Expr::Math { left: Box::new(last_1), oper: m, right: Box::new(last_2) })
+                }
             }
         }
     }
