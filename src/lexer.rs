@@ -35,7 +35,7 @@ pub fn lex(s: &mut Scanner) -> Buffer<Token> {
                 }
             },
             ' ' | '\t' | '\r' | '\n' => { s._while(|c| c.is_whitespace()); s.create(Space)},
-            '.' => {if s._if(|c| c == '.') {s.create(To)} else {todo!()}}
+            '.' => {if s._if(|c| c == '.') {s.create(To)} else {s.create(Unknown)}}
             ',' => s.create(Comma),
             '{' => s.create(LCurlyBracket),
             '}' => s.create(RCurlyBracket),
@@ -127,7 +127,10 @@ fn parse_number(s: &mut Scanner, skip: usize) -> Option<i64> {
                 if s.str().len() <= total_pref_len { return None; }
                 i64::from_str_radix(&s.str()[total_pref_len..s.str().len()], 16).ok()
             },
-            _ => None
+            _ => {
+                s.buf.index -= 1;
+                Some(0)
+            }
         },
         _ => None
     }
