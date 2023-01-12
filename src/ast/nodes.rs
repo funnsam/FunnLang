@@ -54,23 +54,21 @@ pub enum Type {
     Array(Box<Type>, usize)
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum CompOp {
-    EQ, NEQ,
-    LT, LTE,
-    GT, GTE
-}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Number(i64),
     Ident(String),
-    Math {
+    BoolOp {
         left    : Box<Expr>,
-        oper    : MathOp,
+        oper    : BoolOp,
         right   : Box<Expr>
     },
-    BoolOp {
+    UnaryOp {
+        oper    : UnaryOp,
+        val     : Box<Expr>
+    },
+    CompOp {
         left    : Box<Expr>,
         oper    : CompOp,
         right   : Box<Expr>
@@ -78,7 +76,19 @@ pub enum Expr {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum MathOp {
+pub enum UnaryOp {
+    Neg, Abs, Not
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum BoolOp {
     Add, Sub, Mul, Div, Mod,
-    And, Or , Not, XOr,
+    And, Or , XOr,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum CompOp {
+    EQ, NEQ,
+    LT, LTE,
+    GT, GTE
 }

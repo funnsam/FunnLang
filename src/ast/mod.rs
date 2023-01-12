@@ -1,5 +1,7 @@
 pub mod nodes;
 
+use core::panic;
+
 use crate::parser::*;
 use crate::buffer::*;
 use crate::token::{*, TokenKind::*};
@@ -200,75 +202,129 @@ fn parse_expr_from_parser(p: &mut Parser, stop_tokens: &Vec<TokenKind>) -> Expr 
 }
 
 fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
+    #[derive(Debug, Clone, PartialEq)]
+    enum ExprTmp {
+        Number(i64),
+        Ident(String),
+        BoolOp(BoolOp),
+        UnaryOp(UnaryOp),
+        Expr(Expr),
+        LParenthesis,
+    }
+
     fn get_precedence(a: &Token) -> u8 {
         match a.str.chars().next().unwrap() {
             '+' | '-' => 1,
-            '*' | '/' => 2,
+            '*' | '/' | '!' => 2,
             '&' | '|' | '^' => 3,
             _ => 0
         }
     }
 
-    let mut output = Vec::new();
-    let mut op_stk: Vec<Token> = Vec::new();
-
-    while let Some(a) = toks.next() {
-        match a.kind {
-            Number(_) | Name => output.push(a),
-            MathSymbol => {
-                while let Some(b) = op_stk.pop() {
-                    if b.kind != LParenthesis && get_precedence(&b) >= get_precedence(&a) {
-                        output.push(b);
-                    } else {
-                        op_stk.push(b);
-                        break
-                    }
-                };
-                op_stk.push(a)
-            }
-            LParenthesis => op_stk.push(a),
-            RParenthesis => {
-                while let Some(v) = op_stk.pop() {
-                    if v.kind == LParenthesis {
-                        break;
-                    }
-                    output.push(v)
-                }
-            }
-            _ => panic!("Bruh {:?}", a),
-        }
-    }
-    output.append(&mut op_stk);
-
-    #[derive(Debug)]
-    enum ExprTmp {
-        Number(i64),
-        Ident(String),
-        Math(MathOp),
-        Expr(Expr)
-    }
-
-    let mut exprs_1 = Vec::new();
-
-    for el in output.into_iter() {
+    fn as_expr_tmp(el: Token, is_unary: bool) -> ExprTmp {
         match el.kind {
-            Number(v) => exprs_1.push(ExprTmp::Number(v)),
-            Name => exprs_1.push(ExprTmp::Ident(el.str)),
-            MathSymbol => exprs_1.push(ExprTmp::Math(match el.str.chars().next().unwrap() {
-                '+' => MathOp::Add, '-' => MathOp::Sub, '*' => MathOp::Mul, '/' => MathOp::Div,
-                '%' => MathOp::Mod, '&' => MathOp::And, '|' => MathOp::Or , '^' => MathOp::XOr,
-                _ => panic!()
-            })),
+            Number(v) => ExprTmp::Number(v),
+            Name => ExprTmp::Ident(el.str),
+            MathSymbol => {
+                if !is_unary {
+                    ExprTmp::BoolOp(
+                        match el.str.chars().next().unwrap() {
+                            '+' => BoolOp::Add, '-' => BoolOp::Sub, '*' => BoolOp::Mul, '/' => BoolOp::Div,
+                            '%' => BoolOp::Mod, '&' => BoolOp::And, '|' => BoolOp::Or , '^' => BoolOp::XOr,
+                            _ => panic!()
+                        }
+                    )
+                } else {
+                    ExprTmp::UnaryOp(
+                        match el.str.chars().next().unwrap() {
+                            '+' => UnaryOp::Abs, '-' => UnaryOp::Neg, '!' => UnaryOp::Not,
+                            _ => panic!()
+                        }
+                    )
+                }
+            },
             _ => panic!()
         }
     }
 
+    fn extract_token(a: &ExprTmp) -> Option<Token> {
+        match a {
+            ExprTmp::BoolOp(v) => Some(Token {
+                kind: MathSymbol,
+                str: match v {
+                        BoolOp::Add => "+", BoolOp::Sub => "-", BoolOp::Mul => "*", BoolOp::Div => "/",
+                        BoolOp::Mod => "%", BoolOp::And => "&", BoolOp::Or  => "|", BoolOp::XOr => "^"
+                    }.to_string()
+                }
+            ),
+            ExprTmp::UnaryOp(v) => Some(Token {
+                    kind: MathSymbol,
+                    str: match v {
+                        UnaryOp::Abs => '+', UnaryOp::Neg => '-', UnaryOp::Not => '!'
+                    }.to_string()
+                }
+            ),
+            _ => None
+        }
+    }
+
+    let mut output: Vec<ExprTmp> = Vec::new();
+    let mut op_stk: Vec<ExprTmp> = Vec::new();
+    let mut prev = None;
+
+    while let Some(a) = toks.next() {
+        let _a = a.kind.clone();
+        match a.kind {
+            Number(v) => output.push(ExprTmp::Number(v)),
+            Name => output.push(ExprTmp::Ident(a.str)),
+            MathSymbol => {
+                if prev.unwrap_or(MathSymbol) != MathSymbol {
+                    while let Some(b) = op_stk.pop() {
+                        if b != ExprTmp::LParenthesis && get_precedence(&extract_token(&b).unwrap()) >= get_precedence(&a) {
+                            output.push(b);
+                        } else {
+                            op_stk.push(b);
+                            break
+                        }
+                    };
+                    op_stk.push(as_expr_tmp(a, false))
+                } else {
+                    while let Some(b) = op_stk.pop() {
+                        if b != ExprTmp::LParenthesis && get_precedence(&extract_token(&b).unwrap()) >= get_precedence(&a) {
+                            output.push(b);
+                        } else {
+                            op_stk.push(b);
+                            break
+                        }
+                    };
+                    op_stk.push(as_expr_tmp(a, true))
+                }
+            },
+            LParenthesis => op_stk.push(ExprTmp::LParenthesis),
+            RParenthesis => {
+                while let Some(v) = op_stk.pop() {
+                    if v == ExprTmp::LParenthesis {
+                        break;
+                    }
+                    output.push(v)
+                }
+            },
+            _ => panic!("Bruh {:?}", a),
+        }
+        prev = Some(_a);
+    }
+    output.append(&mut op_stk);
+
+    println!("{:?}", output);
+
     let mut tmp1 = Vec::new();
 
-    for el in exprs_1.into_iter() {
+    let mut iter = output.into_iter();
+
+    for el in iter {
         match el {
             ExprTmp::Number(_) | ExprTmp::Ident(_) => tmp1.push(el),
-            ExprTmp::Math(m) => {
+            ExprTmp::BoolOp(m) => {
                 let last_2 = match tmp1.pop().unwrap() {
                     ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
                     _ => panic!()
@@ -277,11 +333,17 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
                     ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
                     _ => panic!()
                 };
-
-                tmp1.push(ExprTmp::Expr(Expr::Math { left: Box::new(last_1), oper: m, right: Box::new(last_2) }))
+                tmp1.push(ExprTmp::Expr(Expr::BoolOp { left: Box::new(last_1), oper: m, right: Box::new(last_2) }))
             },
-
-            ExprTmp::Expr(_) => ()
+            ExprTmp::UnaryOp(op) => {
+                let last = match tmp1.pop().unwrap() {
+                    ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
+                    _ => panic!()
+                };
+                tmp1.push(ExprTmp::Expr(Expr::UnaryOp { oper: op, val: Box::new(last) }))
+            }
+            ExprTmp::Expr(_)        => (),
+            ExprTmp::LParenthesis   => panic!("Bruh {:?}", el)
         }
     }
 
