@@ -18,6 +18,7 @@ impl Scanner {
         }
     }
     #[inline]
+    #[allow(dead_code)]
     pub fn peek(&mut self) -> Option<char> {
         self.buf.peek()
     }

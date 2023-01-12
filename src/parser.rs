@@ -1,5 +1,3 @@
-use core::panic;
-
 use crate::ast::nodes::Node;
 use crate::ast::nodes::Program;
 use crate::buffer::*;

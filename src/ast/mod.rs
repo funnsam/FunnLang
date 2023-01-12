@@ -8,7 +8,7 @@ use crate::token::{*, TokenKind::*};
 
 use self::nodes::*;
 
-pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
+pub fn generate_ast(tok: Buffer<Token>, _src: String) -> Parser {
     let mut p = Parser::new(tok);
     
     while let Some(t) = p.buf.next() {
@@ -211,7 +211,6 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
         Expr(Expr),
         LParenthesis,
     }
-
     fn get_precedence(a: &Token) -> u8 {
         match a.str.chars().next().unwrap() {
             '+' | '-' => 1,
@@ -220,7 +219,6 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
             _ => 0
         }
     }
-
     fn as_expr_tmp(el: Token, is_unary: bool) -> ExprTmp {
         match el.kind {
             Number(v) => ExprTmp::Number(v),
@@ -246,7 +244,6 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
             _ => panic!()
         }
     }
-
     fn extract_token(a: &ExprTmp) -> Option<Token> {
         match a {
             ExprTmp::BoolOp(v) => Some(Token {
@@ -278,34 +275,20 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
             Number(v) => output.push(ExprTmp::Number(v)),
             Name => output.push(ExprTmp::Ident(a.str)),
             MathSymbol => {
-                if prev.unwrap_or(MathSymbol) != MathSymbol {
-                    while let Some(b) = op_stk.pop() {
-                        if b != ExprTmp::LParenthesis && get_precedence(&extract_token(&b).unwrap()) >= get_precedence(&a) {
-                            output.push(b);
-                        } else {
-                            op_stk.push(b);
-                            break
-                        }
-                    };
-                    op_stk.push(as_expr_tmp(a, false))
-                } else {
-                    while let Some(b) = op_stk.pop() {
-                        if b != ExprTmp::LParenthesis && get_precedence(&extract_token(&b).unwrap()) >= get_precedence(&a) {
-                            output.push(b);
-                        } else {
-                            op_stk.push(b);
-                            break
-                        }
-                    };
-                    op_stk.push(as_expr_tmp(a, true))
-                }
+                while let Some(b) = op_stk.pop() {
+                    if b != ExprTmp::LParenthesis && get_precedence(&extract_token(&b).unwrap()) >= get_precedence(&a) {
+                        output.push(b);
+                    } else {
+                        op_stk.push(b);
+                        break
+                    }
+                };
+                op_stk.push(as_expr_tmp(a, prev.unwrap_or(MathSymbol) != MathSymbol))
             },
             LParenthesis => op_stk.push(ExprTmp::LParenthesis),
             RParenthesis => {
                 while let Some(v) = op_stk.pop() {
-                    if v == ExprTmp::LParenthesis {
-                        break;
-                    }
+                    if v == ExprTmp::LParenthesis { break }
                     output.push(v)
                 }
             },
@@ -315,12 +298,8 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
     }
     output.append(&mut op_stk);
 
-    println!("{:?}", output);
-
     let mut tmp1 = Vec::new();
-
-    let mut iter = output.into_iter();
-
+    let iter = output.into_iter();
     for el in iter {
         match el {
             ExprTmp::Number(_) | ExprTmp::Ident(_) => tmp1.push(el),
@@ -346,6 +325,8 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
             ExprTmp::LParenthesis   => panic!("Bruh {:?}", el)
         }
     }
+
+    if tmp1.len() != 1 {panic!()}
 
     match &tmp1[0] {
         ExprTmp::Number(v) => Expr::Number(*v),

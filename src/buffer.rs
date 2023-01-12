@@ -27,11 +27,6 @@ impl<T: Clone + std::fmt::Debug> Buffer<T> {
         Some(self.data[self.index+1].clone())
     }
     #[inline]
-    pub fn peek_back(&mut self) -> Option<T> {
-        if self.index == 0 || self.index == usize::MAX {return None}
-        Some(self.data[self.index-1].clone())
-    }
-    #[inline]
     pub fn next(&mut self) -> Option<T> {
         let a = self.peek();
         self.index+=1;
