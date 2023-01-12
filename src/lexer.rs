@@ -94,33 +94,29 @@ fn parse_escape(s: &mut Scanner) -> char {
 
 fn parse_number(s: &mut Scanner, skip: usize) -> Option<i64> {
     let total_pref_len = skip + 2;
-    s.buf.index -= 1;
 
     match s.buf.current().unwrap() {
-        '-' | '+' | '1'..='9' => {
+        '1'..='9' => {
             s._while(|c|c.is_ascii_digit());
-            return s.str().parse().ok()
+            println!("{:?}", s.str());
+            s.str().parse().ok()
         },
-        '0' => match s.peek().unwrap_or(' ') {
+        '0' => match s.next().unwrap_or(' ') {
             '0'..='9' => {
-                s.next();
                 s._while(|c|c.is_ascii_digit());
                 s.str().parse().ok()
             },
             'b' => {
-                s.next();
                 s._while(|c|c == '0' || c == '1');
                 if s.str().len() <= total_pref_len { return None; }
                 i64::from_str_radix(&s.str()[total_pref_len..s.str().len()], 2).ok()
             },
             'o' => {
-                s.next();
                 s._while(|c|c.is_ascii_digit() && c != '8' && c != '9');
                 if s.str().len() <= total_pref_len { return None; }
                 i64::from_str_radix(&s.str()[total_pref_len..s.str().len()], 8).ok()
             },
             'x' => {
-                s.next();
                 s._while(|c|c.is_ascii_hexdigit());
                 if s.str().len() <= total_pref_len { return None; }
                 i64::from_str_radix(&s.str()[total_pref_len..s.str().len()], 16).ok()

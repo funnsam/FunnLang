@@ -8,10 +8,9 @@ use self::nodes::*;
 
 pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
     let mut p = Parser::new(tok);
-
-    p.buf.buf.index -= 1;
     
     while let Some(t) = p.buf.next() {
+        println!("{:?}", t);
         match t.kind {
             Keyword => {
                 match t.str.to_lowercase().as_str() {
@@ -109,7 +108,7 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
                     },
                     "else" => {
                         p.buf.advance();
-                        match p.buf.buf.peek().unwrap().str.as_str() {
+                        match p.buf.current().unwrap().str.as_str() {
                             "if" => {
                                 p.buf.advance();
                                 p.buf.advance();

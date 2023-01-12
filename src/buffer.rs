@@ -6,7 +6,7 @@ pub struct Buffer<T: Clone + std::fmt::Debug> {
 
 impl<T: Clone + std::fmt::Debug> Buffer<T> {
     pub fn new(data: Vec<T>) -> Self {
-        Buffer {data, index: 0}
+        Buffer {data, index: usize::MAX}
     }
     #[inline]
     pub fn _while<F: Fn(T) -> bool>(&mut self, f: F) {
@@ -23,8 +23,8 @@ impl<T: Clone + std::fmt::Debug> Buffer<T> {
     }
     #[inline]
     pub fn peek(&mut self) -> Option<T> {
-        if self.index >= self.data.len() {return None}
-        Some(self.data[self.index].clone())
+        if self.index > self.data.len() && self.index != usize::MAX {return None}
+        Some(self.data[self.index+1].clone())
     }
     #[inline]
     pub fn next(&mut self) -> Option<T> {

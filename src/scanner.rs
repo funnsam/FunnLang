@@ -14,7 +14,7 @@ impl Scanner {
         Self {
             buf     : Buffer::new(src),
             toks    : Vec::new(),
-            start   : 0
+            start   : usize::MAX
         }
     }
     #[inline]
@@ -31,15 +31,12 @@ impl Scanner {
     }
     #[inline]
     pub fn create(&mut self, kind: TokenKind) {
-        let start   = self.start;
-        let end     = self.buf.index;
-        self.start = end;
-
-        self.toks.push(Token{kind, str: self.buf.data[start..end].iter().collect()});
+        self.toks.push(Token{kind, str: self.str()});
+        self.start = self.buf.index;
     }
     #[inline]
-    pub fn str(&mut self) -> String {
-        self.buf.data[self.start..self.buf.index].iter().collect()
+    pub fn str(&self) -> String {
+        self.buf.data[match self.start {usize::MAX => 0, _ => self.start}..self.buf.index].iter().collect()
     }
 }
 
