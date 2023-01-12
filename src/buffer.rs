@@ -23,7 +23,7 @@ impl<T: Clone + std::fmt::Debug> Buffer<T> {
     }
     #[inline]
     pub fn peek(&mut self) -> Option<T> {
-        if self.index > self.data.len() && self.index != usize::MAX {return None}
+        if self.index >= self.data.len()-1 && self.index != usize::MAX {return None}
         Some(self.data[self.index+1].clone())
     }
     #[inline]

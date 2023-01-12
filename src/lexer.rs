@@ -98,7 +98,6 @@ fn parse_number(s: &mut Scanner, skip: usize) -> Option<i64> {
     match s.buf.current().unwrap() {
         '1'..='9' => {
             s._while(|c|c.is_ascii_digit());
-            println!("{:?}", s.str());
             s.str().parse().ok()
         },
         '0' => match s.next().unwrap_or(' ') {

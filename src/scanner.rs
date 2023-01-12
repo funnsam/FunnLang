@@ -36,7 +36,7 @@ impl Scanner {
     }
     #[inline]
     pub fn str(&self) -> String {
-        self.buf.data[match self.start {usize::MAX => 0, _ => self.start}..self.buf.index].iter().collect()
+        self.buf.data[self.start+1..self.buf.index+1].iter().collect()
     }
 }
 

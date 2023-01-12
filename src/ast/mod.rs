@@ -10,7 +10,6 @@ pub fn generate_ast(tok: Buffer<Token>, src: String) -> Parser {
     let mut p = Parser::new(tok);
     
     while let Some(t) = p.buf.next() {
-        println!("{:?}", t);
         match t.kind {
             Keyword => {
                 match t.str.to_lowercase().as_str() {
