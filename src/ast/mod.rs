@@ -211,32 +211,40 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
         Expr(Expr),
         LParenthesis,
     }
-    fn get_precedence(a: &Token) -> u8 {
-        match a.str.chars().next().unwrap() {
-            '+' | '-' => 1,
-            '*' | '/' | '!' => 2,
-            '&' | '|' | '^' => 3,
-            _ => 0
+    fn get_precedence(a: &ExprTmp) -> u8 {
+        match a {
+            ExprTmp::BoolOp(op) => {
+                use BoolOp::*;
+                match op {
+                    Add | Sub => 1,
+                    Mul | Div | Mod => 2,
+                    And | Or  | XOr => 3,
+                }
+            },
+            ExprTmp::UnaryOp(_) => 4,
+            _ => 0,
         }
     }
     fn as_expr_tmp(el: Token, is_unary: bool) -> ExprTmp {
         match el.kind {
             Number(v) => ExprTmp::Number(v),
             Name => ExprTmp::Ident(el.str),
-            MathSymbol => {
+            MathSymbol | Star | Pointer => {
                 if !is_unary {
                     ExprTmp::BoolOp(
-                        match el.str.chars().next().unwrap() {
-                            '+' => BoolOp::Add, '-' => BoolOp::Sub, '*' => BoolOp::Mul, '/' => BoolOp::Div,
-                            '%' => BoolOp::Mod, '&' => BoolOp::And, '|' => BoolOp::Or , '^' => BoolOp::XOr,
-                            _ => panic!()
+                        match el.str.as_str() {
+                            "+" => BoolOp::Add, "-" => BoolOp::Sub, "*" => BoolOp::Mul, "/" => BoolOp::Div,
+                            "%" => BoolOp::Mod,
+                            "&&" => BoolOp::And, "||" => BoolOp::Or , "^" => BoolOp::XOr,
+                            _ => panic!("Bruh {:?}", el)
                         }
                     )
                 } else {
                     ExprTmp::UnaryOp(
                         match el.str.chars().next().unwrap() {
                             '+' => UnaryOp::Abs, '-' => UnaryOp::Neg, '!' => UnaryOp::Not,
-                            _ => panic!()
+                            '&' => UnaryOp::Ptr, '*' => UnaryOp::Drf,
+                            _ => panic!("Bruh {:?}", el)
                         }
                     )
                 }
@@ -244,24 +252,10 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
             _ => panic!()
         }
     }
-    fn extract_token(a: &ExprTmp) -> Option<Token> {
+    fn is_math(a: TokenKind) -> bool {
         match a {
-            ExprTmp::BoolOp(v) => Some(Token {
-                kind: MathSymbol,
-                str: match v {
-                        BoolOp::Add => "+", BoolOp::Sub => "-", BoolOp::Mul => "*", BoolOp::Div => "/",
-                        BoolOp::Mod => "%", BoolOp::And => "&", BoolOp::Or  => "|", BoolOp::XOr => "^"
-                    }.to_string()
-                }
-            ),
-            ExprTmp::UnaryOp(v) => Some(Token {
-                    kind: MathSymbol,
-                    str: match v {
-                        UnaryOp::Abs => '+', UnaryOp::Neg => '-', UnaryOp::Not => '!'
-                    }.to_string()
-                }
-            ),
-            _ => None
+            MathSymbol | Star | Pointer => true,
+            _ => false
         }
     }
 
@@ -274,16 +268,17 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
         match a.kind {
             Number(v) => output.push(ExprTmp::Number(v)),
             Name => output.push(ExprTmp::Ident(a.str)),
-            MathSymbol => {
+            MathSymbol | Star | Pointer => {
+                let is_unary = is_math(prev.unwrap_or(MathSymbol));
                 while let Some(b) = op_stk.pop() {
-                    if b != ExprTmp::LParenthesis && get_precedence(&extract_token(&b).unwrap()) >= get_precedence(&a) {
+                    if b != ExprTmp::LParenthesis && get_precedence(&b) >= get_precedence(&as_expr_tmp(a.clone(), is_unary)) {
                         output.push(b);
                     } else {
                         op_stk.push(b);
                         break
                     }
                 };
-                op_stk.push(as_expr_tmp(a, prev.unwrap_or(MathSymbol) != MathSymbol))
+                op_stk.push(as_expr_tmp(a, is_unary))
             },
             LParenthesis => op_stk.push(ExprTmp::LParenthesis),
             RParenthesis => {

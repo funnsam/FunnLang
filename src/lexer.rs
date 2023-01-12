@@ -18,15 +18,22 @@ pub fn lex(s: &mut Scanner) -> Buffer<Token> {
                 }
             },
             '0'..='9' => {let a = parse_number(s, 0).unwrap(); s.create(Number(a));}
-            '+' | '-' | '*' | '/' | '%' | '^' | '!' => s.create(MathSymbol),
+            '+' | '-' | '/' | '%' | '^' | '!' => s.create(MathSymbol),
+            '*' => s.create(Star),
             '&' => {
                 if s._if(|c| c == '&') {
                     s.create(MathSymbol)
                 } else {
-                    s.create(Ampersand)
+                    s.create(Pointer)
                 }
             },
-            '|' => {s._if(|c| c == '|'); s.create(MathSymbol)}
+            '|' => {
+                if s._if(|c| c == '|') {
+                    s.create(MathSymbol)
+                } else {
+                    s.create(Unknown)
+                }
+            },
             ' ' | '\t' | '\r' | '\n' => { s._while(|c| c.is_whitespace()); s.create(Space)},
             '.' => {if s._if(|c| c == '.') {s.create(To)} else {todo!()}}
             ',' => s.create(Comma),

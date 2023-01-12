@@ -77,7 +77,8 @@ pub enum Expr {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum UnaryOp {
-    Neg, Abs, Not
+    Neg, Abs, Not,
+    Ptr, Drf
 }
 
 #[derive(Debug, Clone, PartialEq)]
