@@ -13,7 +13,7 @@ pub fn preprocess(s: &mut Buffer<Token>) -> Buffer<Token> {
                     "@import" => {
                         let src = std::fs::read_to_string(match s.next().unwrap().kind {
                             TokenKind::Str(v) => {
-                                match &v[0..0] {
+                                match &v[0..1] {
                                     "*" => {
                                         let mut a = exec_path();
                                         a.push("std");

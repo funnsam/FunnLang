@@ -1,4 +1,4 @@
-@import "examples/fib.funn"
+@import "*io"
 func main() u8 {
     var a u8 = abc(123 + 456) * 123;
 
