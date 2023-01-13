@@ -1,9 +1,6 @@
 func main() u8 {
-    var a [10]&&uint = &3 * *2 / ( 1 - 5 );
-    var b u8 = 0;
-    for (i: 0..10) {
-        a = b + a;
-        b = a - b;
-        println(b);
+    for (i: 0..(10 * (a - 1))) {
+        asm "NOP";
     }
+    return 123 - 12;
 }

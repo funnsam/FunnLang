@@ -39,6 +39,10 @@ impl Scanner {
     pub fn str(&self) -> String {
         self.buf.data[self.start+1..self.buf.index+1].iter().collect()
     }
+    #[inline]
+    pub fn skip(&mut self) {
+        self.start = self.buf.index;
+    }
 }
 
 impl Iterator for Scanner {

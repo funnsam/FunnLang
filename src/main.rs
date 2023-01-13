@@ -12,7 +12,13 @@ use scanner::*;
 use ast::*;
 
 fn main() {
-    let src = std::fs::read_to_string("source.funn").expect("F");
+    let env = std::env::args().collect::<Vec<String>>();
+    let mut path = "source.funn";
+    if env.len() >= 2 {
+        path = &env[1];
+    }
+
+    let src = std::fs::read_to_string(path).expect("F");
     let tok = lex(&mut Scanner::new(src.chars().collect::<Vec<char>>()));
     let ast = generate_ast(tok, src);
     println!("{:#?}", ast.ast);

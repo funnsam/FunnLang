@@ -104,7 +104,7 @@ impl ParserBuffer {
     #[inline]
     pub fn advance(&mut self) {
         self.buf.index += 1;
-        while self.buf.current().unwrap_or(Token { kind: TokenKind::Comma, str: "".to_string() }).kind == TokenKind::Space {
+        while self.buf.current().unwrap_or(Token { kind: TokenKind::Comma, str: "".to_string() }).kind == TokenKind::LF {
             self.buf.index += 1;
         }
     }

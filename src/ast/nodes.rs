@@ -38,6 +38,7 @@ pub enum Node {
         cond: Vec<Expr>,
         body: Vec<Program>
     },
+    CodeBlock(Program),
     AsmBlock(String),
     Return(Expr)
 }

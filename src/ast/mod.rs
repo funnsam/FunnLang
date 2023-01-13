@@ -87,6 +87,7 @@ pub fn generate_ast(tok: Buffer<Token>, _src: String) -> Parser {
                         p.buf.advance();
                         let from = parse_expr_from_parser(&mut p, &vec![To]);
                         let to = parse_expr_from_parser(&mut p, &vec![RParenthesis]);
+                        p.buf.advance();
                         p.add_node(
                             Node::For {
                                 loopv: lv,
@@ -147,7 +148,13 @@ pub fn generate_ast(tok: Buffer<Token>, _src: String) -> Parser {
                             asm_blk
                         ))
                     },
-                    _ => ()
+                    "return" => {
+                        let expr = parse_expr_from_parser(&mut p, &vec![SemiColon]);
+                        p.add_node(
+                            Node::Return(expr)
+                        )
+                    },
+                    _ => todo!()
                 }
             },
             Name => {
@@ -182,6 +189,9 @@ pub fn generate_ast(tok: Buffer<Token>, _src: String) -> Parser {
                     },
                     _ => (),
                 }
+            },
+            LCurlyBracket => {
+                p.add_node(Node::CodeBlock(Program { body: Vec::new(), escaped: false }))
             }
             RCurlyBracket => {
                 p.find_scope().escaped = true
@@ -197,7 +207,7 @@ pub fn generate_ast(tok: Buffer<Token>, _src: String) -> Parser {
 fn parse_type_from_parser(p: &mut Parser, stop_tokens: &Vec<TokenKind>) -> Type {
     let mut tmp = Vec::new();
     while let Some(a) = p.buf.next() {
-        if stop_tokens.contains(&a.kind) {break;}
+        if stop_tokens.contains(&a.kind) { break }
         tmp.push(a);
     };
     parse_type(&mut Buffer::new(tmp))
@@ -212,14 +222,7 @@ fn parse_type(toks: &mut Buffer<Token>) -> Type {
     });
     while let Some(tok) = toks.next() {
         match tok.kind {
-            Pointer     => tmp = Type::Pointer(Box::new(tmp)),
-            MathSymbol  => {
-                if tok.str == "&&".to_string() {
-                    tmp = Type::Pointer(Box::new(Type::Pointer(Box::new(tmp))))
-                } else {
-                    panic!("Bruh {:?}", tok)
-                }
-            }
+            Ampersand     => tmp = Type::Pointer(Box::new(tmp)),
             RBracket    => {
                 let size = match toks.next().unwrap().kind {
                     Number(v) => v,
@@ -241,8 +244,20 @@ fn parse_type(toks: &mut Buffer<Token>) -> Type {
 
 fn parse_expr_from_parser(p: &mut Parser, stop_tokens: &Vec<TokenKind>) -> Expr {
     let mut tmp = Vec::new();
+    let mut lvl = 0;
     while let Some(a) = p.buf.next() {
-        if stop_tokens.contains(&a.kind) {break;}
+        if stop_tokens.contains(&a.kind) {
+            match a.kind {
+                RParenthesis => if lvl == 0 {break},
+                _ => break
+            };
+        }
+        
+        match &a.kind {
+            LParenthesis => lvl += 1, RParenthesis => lvl -= 1,
+            _ => ()
+        }
+
         tmp.push(a);
     };
     parse_expr(&mut Buffer::new(tmp))
@@ -276,13 +291,13 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
         match el.kind {
             Number(v) => ExprTmp::Number(v),
             Name => ExprTmp::Ident(el.str),
-            MathSymbol | Star | Pointer => {
+            MathSymbol | Star | Ampersand => {
                 if !is_unary {
                     ExprTmp::BoolOp(
                         match el.str.as_str() {
                             "+" => BoolOp::Add, "-" => BoolOp::Sub, "*" => BoolOp::Mul, "/" => BoolOp::Div,
                             "%" => BoolOp::Mod,
-                            "&&" => BoolOp::And, "||" => BoolOp::Or , "^" => BoolOp::XOr,
+                            "&" => BoolOp::And, "|" => BoolOp::Or , "^" => BoolOp::XOr,
                             _ => panic!("Bruh {:?}", el)
                         }
                     )
@@ -301,7 +316,7 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
     }
     fn is_math(a: TokenKind) -> bool {
         match a {
-            MathSymbol | Star | Pointer => true,
+            MathSymbol | Star | Ampersand | LParenthesis => true,
             _ => false
         }
     }
@@ -315,7 +330,7 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
         match a.kind {
             Number(v) => output.push(ExprTmp::Number(v)),
             Name => output.push(ExprTmp::Ident(a.str)),
-            MathSymbol | Star | Pointer => {
+            MathSymbol | Star | Ampersand => {
                 let is_unary = is_math(prev.unwrap_or(MathSymbol));
                 while let Some(b) = op_stk.pop() {
                     if b != ExprTmp::LParenthesis && get_precedence(&b) >= get_precedence(&as_expr_tmp(a.clone(), is_unary)) {
