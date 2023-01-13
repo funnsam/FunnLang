@@ -42,7 +42,7 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                         }
 
                         let func_body = Program { body: Vec::new(), escaped: false };
-                        let func_type = Type::Name(p.buf.next().unwrap().str.clone());
+                        let func_type = parse_type_from_parser(&mut p, &vec![RCurlyBracket]);
                         
                         p.add_node(Node::FuncDefine {
                             func_name: name.str,
