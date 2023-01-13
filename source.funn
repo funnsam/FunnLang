@@ -1,3 +1,4 @@
+@import "examples/fib.funn"
 func main() u8 {
     var a u8 = abc(123 + 456) * 123;
 

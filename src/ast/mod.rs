@@ -9,7 +9,7 @@ use crate::token::{*, TokenKind::*};
 
 use self::nodes::*;
 
-pub fn generate_ast(tok: Buffer<Token>, _src: String) -> Parser {
+pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
     let mut p = Parser::new(tok);
     
     while let Some(t) = p.buf.next() {
@@ -183,6 +183,8 @@ pub fn generate_ast(tok: Buffer<Token>, _src: String) -> Parser {
                     _ => (),
                 }
             },
+            Macro => (),
+            Str(_) => (),
             LCurlyBracket => {
                 p.add_node(Node::CodeBlock(Program { body: Vec::new(), escaped: false }))
             }
@@ -380,7 +382,6 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
             },
             _ => panic!("Bruh {:?}", a),
         }
-        println!("{:?}", op_stk);
         prev = Some(_a);
     }
 

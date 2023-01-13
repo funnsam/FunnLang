@@ -4,11 +4,14 @@ mod token;
 mod scanner;
 mod lexer;
 
+mod preprocess;
+
 mod parser;
 mod ast;
 
-use lexer::*;
 use scanner::*;
+use lexer::*;
+use preprocess::*;
 use ast::*;
 
 fn main() {
@@ -19,8 +22,9 @@ fn main() {
     }
 
     let src = std::fs::read_to_string(path).expect("F");
-    let tok = lex(&mut Scanner::new(src.chars().collect::<Vec<char>>()));
-    let ast = generate_ast(tok, src);
+    let mut lex = lex(&mut Scanner::new(src.chars().collect::<Vec<char>>()));
+    let tok = preprocess(&mut lex);
+    let ast = generate_ast(&tok, src);
     println!("{:#?}", ast.ast);
 }
 

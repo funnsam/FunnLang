@@ -5,6 +5,7 @@ use crate::token::{*, TokenKind::*};
 pub fn lex(s: &mut Scanner) -> Buffer<Token> {
     while let Some(c) = s.next() {
         match c {
+            '@' => { s._while(|c| c.is_alphanumeric()); s.create(Macro)},
             'a'..='z' | 'A'..='Z' => {
                 s._while(|c| c.is_alphanumeric());
                 match s.str().to_lowercase().as_str() {
@@ -29,8 +30,8 @@ pub fn lex(s: &mut Scanner) -> Buffer<Token> {
                 }
             }
             ' ' | '\t' | '\r' => { s._while(|c| c == ' ' || c == '\t' || c == '\r'); s.skip()},
-            '\n'=> s.create(LF),
             '.' => {if s._if(|c| c == '.') {s.create(To)} else {s.create(Unknown)}}
+            '\n'=> s.create(LF),
             ',' => s.create(Comma),
             '{' => s.create(LCurlyBracket),
             '}' => s.create(RCurlyBracket),

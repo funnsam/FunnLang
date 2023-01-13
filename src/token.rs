@@ -8,7 +8,7 @@ pub struct Token {
 pub enum TokenKind {
     Keyword, Name, Number(i64),
     LF,
-    Comma, Colon, SemiColon, EqualSign, MathSymbol, Logic, To, Ampersand, Star,
+    Comma, Colon, SemiColon, EqualSign, MathSymbol, Logic, To, Ampersand, Star, Macro,
     LCurlyBracket, RCurlyBracket, LBracket, RBracket, LParenthesis, RParenthesis,
     Char(char), Str(String),
     Unknown,

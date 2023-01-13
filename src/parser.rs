@@ -11,7 +11,7 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn new(src: Buffer<Token>) -> Self {
+    pub fn new(src: &Buffer<Token>) -> Self {
         let ast = Program{body: Vec::new(), escaped: false};
         Self {
             buf: ParserBuffer::new(src),
@@ -88,9 +88,9 @@ pub struct ParserBuffer {
 }
 
 impl ParserBuffer {
-    pub fn new(src: Buffer<Token>) -> Self {
+    pub fn new(src: &Buffer<Token>) -> Self {
         Self {
-            buf : src,
+            buf : src.clone(),
         }
     }
     #[inline]
