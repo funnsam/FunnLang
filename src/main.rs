@@ -24,7 +24,7 @@ fn main() {
     println!("{:#?}", ast.ast);
 }
 
-pub fn fuck_mut<T>(a: &T) -> &mut T {
+pub fn to_mut_ptr<T>(a: &T) -> &mut T {
     unsafe {
         &mut *(a as *const T as *mut T)
     }

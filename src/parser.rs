@@ -1,7 +1,7 @@
 use crate::ast::nodes::Node;
 use crate::ast::nodes::Program;
 use crate::buffer::*;
-use crate::fuck_mut;
+use crate::to_mut_ptr;
 use crate::token::*;
 
 #[derive(Debug)]
@@ -26,13 +26,13 @@ impl Parser {
     pub fn find_scope(&mut self) -> &mut Program {
         let mut scope: &Program = &self.ast;
         while let Some(a) = find_scope_from_program(scope) {scope = a}
-        fuck_mut(scope)
+        to_mut_ptr(scope)
     }
 
     pub fn find_branch_block(&mut self) -> &mut Node {
         let scope = self.find_scope();
         let last = find_branch(scope).unwrap();
-        fuck_mut(last)
+        to_mut_ptr(last)
     }
 }
 

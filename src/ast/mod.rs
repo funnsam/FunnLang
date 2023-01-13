@@ -269,6 +269,7 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
     }
     fn get_precedence(a: &ExprTmp) -> u8 {
         match a {
+            ExprTmp::UnaryOp(_) => 5,
             ExprTmp::BoolOp(op) => {
                 use BoolOp::*;
                 match op {
@@ -278,7 +279,6 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
                 }
             },
             ExprTmp::CompOp(_)  => 4,
-            ExprTmp::UnaryOp(_) => 5,
             _ => 0,
         }
     }
@@ -357,9 +357,9 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
         }
         prev = Some(_a);
     }
+
     output.append(&mut op_stk);
 
-    println!("{:?}", output);
 
     let mut tmp1 = Vec::new();
     let iter = output.into_iter();
