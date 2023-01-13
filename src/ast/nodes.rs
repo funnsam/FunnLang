@@ -61,6 +61,10 @@ pub enum Type {
 pub enum Expr {
     Number(i64),
     Ident(String),
+    Function{
+        name    : String,
+        args    : Vec<Expr>
+    },
     BoolOp {
         left    : Box<Expr>,
         oper    : BoolOp,

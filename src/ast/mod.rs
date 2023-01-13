@@ -282,10 +282,35 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
             _ => 0,
         }
     }
-    fn as_expr_tmp(el: Token, is_unary: bool) -> ExprTmp {
+    fn as_expr_tmp(el: Token, is_unary: bool, iter: &mut Buffer<Token>) -> ExprTmp {
         match el.kind {
             Number(v) => ExprTmp::Number(v),
-            Name => ExprTmp::Ident(el.str),
+            Name => {
+                match iter.peek().unwrap_or(Token { kind: LF, str: "\n".to_string() }).kind {
+                    LParenthesis => {
+                        let name = iter.current().unwrap();
+                        iter.next();
+
+                        let mut raw_args: Vec<Vec<Token>> = vec![Vec::new()];
+                        while let Some(a) = iter.next() {
+                            match a.kind {
+                                RParenthesis => break,
+                                Comma => raw_args.push(Vec::new()),
+                                _ => raw_args.last_mut().unwrap().push(a),
+                            }
+                        }
+                        let mut args: Vec<Expr> = Vec::new();
+                        for el in raw_args.into_iter() {
+                            if !el.is_empty() {
+                                args.push(parse_expr(&mut Buffer::new(el)))
+                            }
+                        }
+
+                        ExprTmp::Expr(Expr::Function { name: name.str, args })
+                    },
+                    _ => ExprTmp::Ident(el.str)
+                }
+            },
             MathSymbol | Star | Ampersand => {
                 if !is_unary {
                     ExprTmp::BoolOp(
@@ -328,23 +353,23 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
     let mut output: Vec<ExprTmp> = Vec::new();
     let mut op_stk: Vec<ExprTmp> = Vec::new();
     let mut prev = None;
-
+    
     while let Some(a) = toks.next() {
         let _a = a.kind.clone();
         match a.kind {
             Number(v) => output.push(ExprTmp::Number(v)),
-            Name => output.push(ExprTmp::Ident(a.str)),
+            Name => output.push(as_expr_tmp(a, false, toks)),
             MathSymbol | Star | Ampersand | Logic => {
                 let is_unary = is_math(prev.unwrap_or(MathSymbol));
                 while let Some(b) = op_stk.pop() {
-                    if b != ExprTmp::LParenthesis && get_precedence(&b) >= get_precedence(&as_expr_tmp(a.clone(), is_unary)) {
+                    if b != ExprTmp::LParenthesis && get_precedence(&b) >= get_precedence(&as_expr_tmp(a.clone(), is_unary, toks)) {
                         output.push(b);
                     } else {
                         op_stk.push(b);
                         break
                     }
                 };
-                op_stk.push(as_expr_tmp(a, is_unary));
+                op_stk.push(as_expr_tmp(a, is_unary, toks));
             },
             LParenthesis => op_stk.push(ExprTmp::LParenthesis),
             RParenthesis => {
@@ -355,6 +380,7 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
             },
             _ => panic!("Bruh {:?}", a),
         }
+        println!("{:?}", op_stk);
         prev = Some(_a);
     }
 
@@ -365,7 +391,7 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
     let iter = output.into_iter();
     for el in iter {
         match el {
-            ExprTmp::Number(_) | ExprTmp::Ident(_) => tmp1.push(el),
+            ExprTmp::Number(_) | ExprTmp::Ident(_) | ExprTmp::Expr(_) => tmp1.push(el),
             ExprTmp::BoolOp(op) => {
                 let last_2 = match tmp1.pop().unwrap() {
                     ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
@@ -395,12 +421,11 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
                 };
                 tmp1.push(ExprTmp::Expr(Expr::CompOp { left: Box::new(last_1), oper: op, right: Box::new(last_2) }))
             }
-            ExprTmp::Expr(_)        => (),
             ExprTmp::LParenthesis   => panic!("Bruh {:?}", el)
         }
     }
 
-    if tmp1.len() != 1 {panic!()}
+    if tmp1.len() != 1 {panic!("Bruh {:?}", tmp1)}
 
     match &tmp1[0] {
         ExprTmp::Number(v) => Expr::Number(*v),
