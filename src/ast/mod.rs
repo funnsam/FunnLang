@@ -1,6 +1,7 @@
 pub mod nodes;
 
 use core::panic;
+use std::vec;
 
 use crate::parser::*;
 use crate::buffer::*;
@@ -53,14 +54,15 @@ pub fn generate_ast(tok: Buffer<Token>, _src: String) -> Parser {
                     },
                     "var" => {
                         let name = p.buf.next().unwrap();
-                        let typ  = p.buf.next().unwrap();
-                        if name.kind != Name && typ.kind != Name {todo!()}
-                        p.buf.advance();
+                        if name.kind != Name {todo!()}
+
+                        let typ  = parse_type_from_parser(&mut p, &vec![EqualSign, SemiColon]);
+
                         let expr = parse_expr_from_parser(&mut p, &vec![SemiColon]);
 
                         p.add_node(
                             Node::VarDefine {
-                                var_type: Type::Name(typ.str),
+                                var_type: typ,
                                 var_name: name.str,
                                 val_expr: expr
                             }
@@ -190,6 +192,51 @@ pub fn generate_ast(tok: Buffer<Token>, _src: String) -> Parser {
         }
     }
     p
+}
+
+fn parse_type_from_parser(p: &mut Parser, stop_tokens: &Vec<TokenKind>) -> Type {
+    let mut tmp = Vec::new();
+    while let Some(a) = p.buf.next() {
+        if stop_tokens.contains(&a.kind) {break;}
+        tmp.push(a);
+    };
+    parse_type(&mut Buffer::new(tmp))
+}
+
+fn parse_type(toks: &mut Buffer<Token>) -> Type {
+    toks.data.reverse();
+
+    let mut tmp: Type = Type::Name(match toks.data[0].kind {
+        Name => toks.data[0].str.clone(),
+        _ => panic!()
+    });
+    while let Some(tok) = toks.next() {
+        match tok.kind {
+            Pointer     => tmp = Type::Pointer(Box::new(tmp)),
+            MathSymbol  => {
+                if tok.str == "&&".to_string() {
+                    tmp = Type::Pointer(Box::new(Type::Pointer(Box::new(tmp))))
+                } else {
+                    panic!("Bruh {:?}", tok)
+                }
+            }
+            RBracket    => {
+                let size = match toks.next().unwrap().kind {
+                    Number(v) => v,
+                    _ => panic!()
+                };
+                toks.next();
+                tmp = Type::Array(Box::new(tmp), size as usize)
+            },
+            Name => {
+                if toks.index != 0 {
+                    panic!()
+                }
+            },
+            _ => panic!("Bruh {:?}", tok)
+        }
+    }
+    tmp
 }
 
 fn parse_expr_from_parser(p: &mut Parser, stop_tokens: &Vec<TokenKind>) -> Expr {

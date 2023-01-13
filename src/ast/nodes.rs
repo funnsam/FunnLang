@@ -38,7 +38,8 @@ pub enum Node {
         cond: Vec<Expr>,
         body: Vec<Program>
     },
-    AsmBlock(String)
+    AsmBlock(String),
+    Return(Expr)
 }
 
 #[derive(Debug, Clone, PartialEq)]
