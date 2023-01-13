@@ -17,7 +17,7 @@ pub fn preprocess(s: &mut Buffer<Token>) -> Buffer<Token> {
                                     "*" => {
                                         let mut a = exec_path();
                                         a.push("std");
-                                        a.push(v);
+                                        a.push(v + ".funn");
                                         format!("{}", a.display())
                                     }
                                     _ => v
