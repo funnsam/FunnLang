@@ -99,13 +99,10 @@ pub fn generate_ast(tok: Buffer<Token>, _src: String) -> Parser {
                     },
                     "if" => {
                         p.buf.advance();
-                        while let Some(t) = p.buf.next() {
-                            if t.kind == RParenthesis {break}
-                        }
-                        p.buf.advance();
+                        let expr = parse_expr_from_parser(&mut p, &vec![RParenthesis]);
                         p.add_node(
                             Node::Branch {
-                                cond: vec![Expr::Number(1)],
+                                cond: vec![expr],
                                 body: vec![Program { body: Vec::new(), escaped: false }]
                             }
                         )
@@ -115,14 +112,10 @@ pub fn generate_ast(tok: Buffer<Token>, _src: String) -> Parser {
                         match p.buf.current().unwrap().str.as_str() {
                             "if" => {
                                 p.buf.advance();
-                                p.buf.advance();
-                                while let Some(t) = p.buf.next() {
-                                    if t.kind == RParenthesis {break}
-                                }
-                                p.buf.advance();
+                                let expr = parse_expr_from_parser(&mut p, &vec![RParenthesis]);
                                 match p.find_branch_block() {
                                     Node::Branch { cond, body } => {
-                                        cond.push(Expr::Number(1));
+                                        cond.push(expr);
                                         body.push(Program { body: Vec::new(), escaped: false });
                                     },
                                     _ => todo!(),
@@ -270,6 +263,7 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
         Ident(String),
         BoolOp(BoolOp),
         UnaryOp(UnaryOp),
+        CompOp(CompOp),
         Expr(Expr),
         LParenthesis,
     }
@@ -283,7 +277,8 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
                     And | Or  | XOr => 3,
                 }
             },
-            ExprTmp::UnaryOp(_) => 4,
+            ExprTmp::CompOp(_)  => 4,
+            ExprTmp::UnaryOp(_) => 5,
             _ => 0,
         }
     }
@@ -311,12 +306,21 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
                     )
                 }
             },
+            Logic => {
+                use CompOp::*;
+                ExprTmp::CompOp(match el.str.as_str() {
+                    "==" => EQ, "!=" => NEQ,
+                    ">"  => LT, ">=" => LTE,
+                    "<"  => GT, "<=" => GTE,
+                    _ => panic!()
+                })
+            },
             _ => panic!()
         }
     }
     fn is_math(a: TokenKind) -> bool {
         match a {
-            MathSymbol | Star | Ampersand | LParenthesis => true,
+            MathSymbol | Star | Ampersand | LParenthesis | Logic => true,
             _ => false
         }
     }
@@ -330,7 +334,7 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
         match a.kind {
             Number(v) => output.push(ExprTmp::Number(v)),
             Name => output.push(ExprTmp::Ident(a.str)),
-            MathSymbol | Star | Ampersand => {
+            MathSymbol | Star | Ampersand | Logic => {
                 let is_unary = is_math(prev.unwrap_or(MathSymbol));
                 while let Some(b) = op_stk.pop() {
                     if b != ExprTmp::LParenthesis && get_precedence(&b) >= get_precedence(&as_expr_tmp(a.clone(), is_unary)) {
@@ -340,7 +344,7 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
                         break
                     }
                 };
-                op_stk.push(as_expr_tmp(a, is_unary))
+                op_stk.push(as_expr_tmp(a, is_unary));
             },
             LParenthesis => op_stk.push(ExprTmp::LParenthesis),
             RParenthesis => {
@@ -355,12 +359,14 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
     }
     output.append(&mut op_stk);
 
+    println!("{:?}", output);
+
     let mut tmp1 = Vec::new();
     let iter = output.into_iter();
     for el in iter {
         match el {
             ExprTmp::Number(_) | ExprTmp::Ident(_) => tmp1.push(el),
-            ExprTmp::BoolOp(m) => {
+            ExprTmp::BoolOp(op) => {
                 let last_2 = match tmp1.pop().unwrap() {
                     ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
                     _ => panic!()
@@ -369,7 +375,7 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
                     ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
                     _ => panic!()
                 };
-                tmp1.push(ExprTmp::Expr(Expr::BoolOp { left: Box::new(last_1), oper: m, right: Box::new(last_2) }))
+                tmp1.push(ExprTmp::Expr(Expr::BoolOp { left: Box::new(last_1), oper: op, right: Box::new(last_2) }))
             },
             ExprTmp::UnaryOp(op) => {
                 let last = match tmp1.pop().unwrap() {
@@ -377,6 +383,17 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
                     _ => panic!()
                 };
                 tmp1.push(ExprTmp::Expr(Expr::UnaryOp { oper: op, val: Box::new(last) }))
+            },
+            ExprTmp::CompOp(op) => {
+                let last_2 = match tmp1.pop().unwrap() {
+                    ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
+                    _ => panic!()
+                };
+                let last_1 = match tmp1.pop().unwrap() {
+                    ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
+                    _ => panic!()
+                };
+                tmp1.push(ExprTmp::Expr(Expr::CompOp { left: Box::new(last_1), oper: op, right: Box::new(last_2) }))
             }
             ExprTmp::Expr(_)        => (),
             ExprTmp::LParenthesis   => panic!("Bruh {:?}", el)

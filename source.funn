@@ -1,4 +1,10 @@
 func main() u8 {
+    if (1 == 234) {
+        asm "HLT";
+    } else if (1 <= &12) {
+        asm "NOP";
+    }
+
     for (i: 0..(10 * (a - 1))) {
         asm "NOP";
     }
