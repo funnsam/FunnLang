@@ -50,6 +50,12 @@ impl Parser {
         to_mut_ptr(scope)
     }
 
+    pub fn is_at_root(&self) -> bool {
+        let mut scope: &Program = &self.ast;
+        while let Some(a) = find_scope_from_program(scope) {scope = a}
+        scope == &self.ast
+    }
+
     pub fn find_branch_block(&mut self) -> &mut Node {
         let scope = self.find_scope();
         let last = find_branch(scope).unwrap();

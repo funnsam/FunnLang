@@ -1,4 +1,7 @@
 func main() u8 {
+    func nest() u8 {
+        asm "nope"
+    }
     ->
     ->
     bruh()

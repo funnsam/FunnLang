@@ -3,6 +3,7 @@ pub mod nodes;
 use core::panic;
 use std::vec;
 
+use crate::errors::{*, error::*};
 use crate::parser::*;
 use crate::buffer::*;
 use crate::token::{*, TokenKind::*};
@@ -45,13 +46,32 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
 
                         let func_body = Program { body: Vec::new(), escaped: false };
                         let func_type = parse_type_from_parser(&mut p, &vec![LCurlyBracket]);
-                        
-                        p.add_node(Node::FuncDefine {
+
+                        let node = Node::FuncDefine {
                             func_name: name.str,
                             func_args,
                             func_type,
-                            func_body,
-                        });
+                            func_body: func_body.clone(),
+                        };
+
+                        if !p.is_at_root() {
+                            p.err.add_error(
+                                Error::new(
+                                    ErrorKind::UnexpectedNodeType { found: node },
+                                    ErrorLevel::Error,
+                                    p.buf.line
+                                )
+                            );
+                            p.err.add_error(
+                                Error::new(
+                                    ErrorKind::TreatAs { into: Node::CodeBlock(func_body) },
+                                    ErrorLevel::Info,
+                                    p.buf.line
+                                )
+                            );
+                        } else {
+                            p.add_node(node);
+                        }
                     },
                     "var" => {
                         let name = p.buf.next().unwrap();
@@ -199,13 +219,12 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                 p.find_scope().escaped = true
             },
             _ => {
-                use crate::errors::*;
                 p.err.add_error(
                     Error::new(
-                        error::ErrorKind::UnexpectedToken {
+                        ErrorKind::UnexpectedToken {
                             found: t.kind
                         },
-                        error::ErrorLevel::Error,
+                        ErrorLevel::Error,
                         p.buf.line
                     )
                 )

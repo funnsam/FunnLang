@@ -126,7 +126,7 @@ impl std::fmt::Display for Node {
             Branch { cond: _, body: _ }
                 => write!(f, "Conditional branch"),
             CodeBlock(_)
-                => write!(f, "Block"),
+                => write!(f, "Code block"),
             AsmBlock(_)
                 => write!(f, "Assembly code block"),
             Return(_)
