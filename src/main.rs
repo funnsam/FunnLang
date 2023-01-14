@@ -11,23 +11,53 @@ mod ast;
 
 mod compiler;
 
+use codegem::regalloc::RegAlloc;
+use codegem::arch::{urcl::UrclSelector, rv64::RvSelector, x64::X64Selector};
 use scanner::*;
 use lexer::*;
 use preprocess::*;
 use ast::*;
 
-fn main() {
-    let env = std::env::args().collect::<Vec<String>>();
-    let mut path = "source.funn";
-    if env.len() >= 2 {
-        path = &env[1];
-    }
+use clap::Parser;
 
-    let src = std::fs::read_to_string(path).expect("F");
+#[derive(Parser)]
+struct Args {
+    #[arg(value_name = "Input file")]
+    input_file: String,
+
+    #[arg(short, long, default_value="urcl")]
+    target: String
+}
+
+fn main() {
+    let args = Args::parse();
+
+
+    let src = std::fs::read_to_string(args.input_file).expect("F");
     let mut lex = lex(&mut Scanner::new(src.chars().collect::<Vec<char>>()));
     let tok = preprocess(&mut lex);
     let ast = generate_ast(&tok, src);
     println!("{:#?}", ast.ast);
+
+    let ir = compiler::ast_compiler::compiler(ast.ast);
+    match args.target.to_ascii_lowercase().as_str() {
+        "urcl" => {
+            let mut vcode = ir.lower_to_vcode::<_, UrclSelector>();
+            vcode.allocate_regs::<RegAlloc>();
+            vcode.emit_assembly();
+        }
+        "rv64" | "riscv" => {
+            let mut vcode = ir.lower_to_vcode::<_, RvSelector>();
+            vcode.allocate_regs::<RegAlloc>();
+            vcode.emit_assembly();
+        }
+        "x86" | "x86_64" | "x64" => {
+            let mut vcode = ir.lower_to_vcode::<_, X64Selector>();
+            vcode.allocate_regs::<RegAlloc>();
+            vcode.emit_assembly();
+        }
+        _ => panic!("Unsupported arch.")
+    }
 }
 
 pub fn to_mut_ptr<T>(a: &T) -> &mut T {

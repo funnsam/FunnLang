@@ -1,3 +1,5 @@
+use codegem::ir::Type as IRType;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
     pub body: Vec<Node>,
@@ -54,6 +56,25 @@ pub enum Type {
     Name(String),
     Pointer(Box<Type>),
     Array(Box<Type>, usize)
+}
+
+impl Type {
+    pub fn to_ir_type(self) -> IRType {
+        match self {
+            Type::Name(n) => {
+                match n.as_str() {
+                    "i32" => IRType::Integer(true, 32),
+                    "i16" => IRType::Integer(true, 16),
+                    "i8" => IRType::Integer(true, 8),
+                    "u32" => IRType::Integer(false, 32),
+                    "u16" => IRType::Integer(false, 16),
+                    "u8" => IRType::Integer(false, 8),
+                    _ => todo!("Unimplimented type.")
+                }
+            }
+            _ => todo!("Unimplimented type.")
+        }
+    }
 }
 
 

@@ -1,9 +1,4 @@
-@import "examples/fib.funn"
 func main() u8 {
-    var a u8 = abc(123 + 456) * 123;
-
-    for (i: 0..(10 * (a - 1))) {
-        asm "NOP";
-    }
-    return 123 - 12;
+    var a i32 = 69+42;
+    var b i32 = a+10;
 }
