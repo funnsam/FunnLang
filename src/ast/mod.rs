@@ -212,7 +212,7 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                 if p.is_at_root() {
                     p.err.add_error(
                         Error::new(
-                            ErrorKind::UnclosedBracket,
+                            ErrorKind::UnexpectedToken { found: t.kind },
                             ErrorLevel::Error,
                             p.buf.line
                         )
