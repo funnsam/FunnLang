@@ -62,13 +62,6 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                                     p.buf.line
                                 )
                             );
-                            p.err.add_error(
-                                Error::new(
-                                    ErrorKind::TreatAs { into: Node::CodeBlock(func_body) },
-                                    ErrorLevel::Info,
-                                    p.buf.line
-                                )
-                            );
                         } else {
                             p.add_node(node);
                         }
