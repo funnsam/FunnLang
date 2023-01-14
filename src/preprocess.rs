@@ -5,7 +5,7 @@ use crate::lexer::lex;
 use crate::token::*;
 
 pub fn preprocess(s: &mut Buffer<Token>) -> Buffer<Token> {
-    let mut final_buf = s.clone();
+    let mut extra: Buffer<Token> = Buffer::new(Vec::new());
     'scan_for_macro: while let Some(a) = s.next() {
         match a.kind {
             TokenKind::Macro => {
@@ -27,11 +27,13 @@ pub fn preprocess(s: &mut Buffer<Token>) -> Buffer<Token> {
                         }).expect("F");
                         let mut tmp = lex(&mut crate::scanner::Scanner::new(src.chars().collect::<Vec<char>>()));
                         let mut tok = preprocess(&mut tmp);
-                        tok.data.extend(final_buf.data);
-                        final_buf.data = tok.data;
+                        extra.data.append(&mut tok.data);
+                        s.data.remove(s.index);
+                        s.data.remove(s.index-1);
+                        s.index -= 2;
                     },
                     _ => panic!()
-                }
+                };
             },
             _ => {
                 while let Some(b) = s.next() {
@@ -42,7 +44,8 @@ pub fn preprocess(s: &mut Buffer<Token>) -> Buffer<Token> {
             }
         }
     }
-    final_buf
+    extra.data.append(&mut s.data);
+    extra
 }
 
 fn exec_path() -> PathBuf {

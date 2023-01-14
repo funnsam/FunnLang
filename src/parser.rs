@@ -23,6 +23,13 @@ impl Parser {
         self.find_scope().body.push(node)
     }
 
+    pub fn expect_semicolon(&mut self) {
+        match self.buf.next().unwrap().kind {
+            TokenKind::SemiColon => (),
+            _ => panic!()
+        }
+    }
+
     pub fn find_scope(&mut self) -> &mut Program {
         let mut scope: &Program = &self.ast;
         while let Some(a) = find_scope_from_program(scope) {scope = a}

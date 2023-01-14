@@ -34,6 +34,8 @@ pub enum Node {
         from: Expr, to: Expr,
         body: Program
     },
+    Break,
+    Continue,
     Branch {
         cond: Vec<Expr>,
         body: Vec<Program>
@@ -78,7 +80,8 @@ pub enum Expr {
         left    : Box<Expr>,
         oper    : CompOp,
         right   : Box<Expr>
-    }
+    },
+    Cast(Type)
 }
 
 #[derive(Debug, Clone, PartialEq)]
