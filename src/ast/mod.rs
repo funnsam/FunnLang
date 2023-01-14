@@ -19,10 +19,10 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                     "func" => {
                         let name = p.buf.next().unwrap();    // TODO error checking
                         if name.kind != Name {todo!()}
-                        if p.buf.next().unwrap().kind != LParenthesis {todo!()}
+                        p.buf.advance();
                         
-                        let mut raw_args: Vec<Vec<String>> = Vec::new();
-                        let mut tmp = Vec::with_capacity(2);
+                        let mut raw_args: Vec<Vec<Token>> = Vec::new();
+                        let mut tmp: Vec<Token> = Vec::with_capacity(2);
                         while let Some(t) = p.buf.next() {
                             if t.kind == RParenthesis {
                                 if !tmp.is_empty() {raw_args.push(tmp.clone())}
@@ -31,18 +31,20 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                                 raw_args.push(tmp.clone());
                                 tmp.clear()
                             } else {
-                                tmp.push(t.str)
+                                tmp.push(t)
                             }
                         }
                         drop(tmp);
 
                         let mut func_args = Vec::new();
-                        for el in raw_args.into_iter() {
-                            func_args.push(FuncDefArg{name: el[0].clone(), typ: Type::Name(el[1].clone())})
+                        for el in raw_args.iter_mut() {
+                            let name = el[0].str.clone(); el.remove(0);
+                            let typ  = parse_type(&mut Buffer::new(el.to_vec()));
+                            func_args.push(FuncDefArg{name, typ})
                         }
 
                         let func_body = Program { body: Vec::new(), escaped: false };
-                        let func_type = parse_type_from_parser(&mut p, &vec![RCurlyBracket]);
+                        let func_type = parse_type_from_parser(&mut p, &vec![LCurlyBracket]);
                         
                         p.add_node(Node::FuncDefine {
                             func_name: name.str,
@@ -50,7 +52,6 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                             func_type,
                             func_body,
                         });
-                        p.buf.advance();
                     },
                     "var" => {
                         let name = p.buf.next().unwrap();
@@ -192,7 +193,7 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                 p.find_scope().escaped = true
             },
             _ => {
-                println!("Debug: Unexpected {:?}.", t)
+                println!("Debug: Unexpected {:?}, previous: {:?}", t, p.buf.buf.data[p.buf.buf.index-1])
             },
         }
     }

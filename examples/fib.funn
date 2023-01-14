@@ -1,9 +1,11 @@
+@import "*io"
+
 func main() u8 {
-    var a u8 = 1;
-    var b u8 = 0;
+    var a u16 = 1;
+    var b u16 = 0;
     for (i: 0..10) {
         a = b + a;
         b = a - b;
-        println(b);
+        println_u(b -> uint);
     }
 }

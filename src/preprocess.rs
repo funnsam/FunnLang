@@ -17,7 +17,7 @@ pub fn preprocess(s: &mut Buffer<Token>) -> Buffer<Token> {
                                     "*" => {
                                         let mut a = exec_path();
                                         a.push("std");
-                                        a.push(v + ".funn");
+                                        a.push(v[1..v.len()].to_owned() + ".funn");
                                         format!("{}", a.display())
                                     }
                                     _ => v
@@ -26,9 +26,10 @@ pub fn preprocess(s: &mut Buffer<Token>) -> Buffer<Token> {
                             _ => panic!()
                         }).expect("F");
                         let mut tmp = lex(&mut crate::scanner::Scanner::new(src.chars().collect::<Vec<char>>()));
-                        let tok = preprocess(&mut tmp);
-                        final_buf.data.extend(tok.data);
-                    }
+                        let mut tok = preprocess(&mut tmp);
+                        tok.data.extend(final_buf.data);
+                        final_buf.data = tok.data;
+                    },
                     _ => panic!()
                 }
             },
