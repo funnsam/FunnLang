@@ -33,7 +33,7 @@ impl std::fmt::Display for ErrorKind {
             MainNotFound
                 => write!(f, "Cannot find main function"),
             UnexpectedToken { found }
-                => write!(f, "Unexpected {:?}", found),
+                => write!(f, "Unexpected token {}", found),
         }
     }
 }

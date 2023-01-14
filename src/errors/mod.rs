@@ -33,7 +33,7 @@ impl ErrorHandler {
         use std::fmt::Write;
         for el in self.errors.iter() {
             writeln!(&mut tmp, "{}: {}:", el.lvl, el.err).unwrap();
-            writeln!(&mut tmp, "{}{} |  {}", " ".repeat(4 - format!("{}", el.at_line).len().min(0)), el.at_line, lines[el.at_line-1].trim()).unwrap();
+            writeln!(&mut tmp, "{}{} |  {}", " ".repeat(4 - format!("{}", el.at_line).len().min(0)), el.at_line + 1, lines[el.at_line].trim()).unwrap();
         }
 
         tmp

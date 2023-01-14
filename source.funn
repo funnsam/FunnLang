@@ -1,18 +1,5 @@
 func main() u8 {
-    asm ""
-    asm ""
-    asm ""
-    asm ""
-    asm ""
-    asm ""
-    asm ""
-    asm ""
-    asm ""
-    asm ""
-    asm ""
-    asm ""
-    asm ""
-    asm ""
-    asm ""
-    asm ""
+    ->
+    ->
+    bruh()
 }
