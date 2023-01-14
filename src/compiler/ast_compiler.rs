@@ -11,7 +11,6 @@ pub fn compiler(prog: Program) -> Module {
     let mut variables: HashMap<String, VariableId> = HashMap::new();
 
     compile(prog, &mut builder, &mut functions, &mut variables);
-
     builder.build()
 }
 
@@ -35,23 +34,25 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
             Node::VarDefine { var_type, var_name, val_expr } => {
                 let var = builder.push_variable(&var_name, &var_type.clone().to_ir_type()).unwrap();
                 vars.insert(var_name, var);
-                println!("{:#?}", vars.keys());
                 let expr = compile_expr(val_expr, builder, functions, &vars, &var_type.clone().to_ir_type());
                 builder.push_instruction(&var_type.to_ir_type(), Operation::SetVar(var, expr));
             }
             Node::While { cond, body } => {
-                let cond = compile_expr(cond, builder, functions, &vars, &IRType::Integer(true, 32));
+                let cond_block = builder.push_block().unwrap();
+                builder.set_terminator(Terminator::Jump(cond_block));
+                builder.switch_to_block(cond_block);
                 let body_block = builder.push_block().unwrap();
-                let while_end = builder.push_block().unwrap();
+                let end_block = builder.push_block().unwrap();
+                let cond = compile_expr(cond, builder, functions, &vars, &IRType::Integer(true, 32));
+                builder.set_terminator(Terminator::Branch(cond, body_block, end_block));
                 builder.switch_to_block(body_block);
                 compile(body, builder, functions, &vars);
-                builder.set_terminator(Terminator::Branch(cond, body_block, while_end));
-                builder.switch_to_block(while_end);
+                builder.set_terminator(Terminator::Jump(cond_block));
+                builder.switch_to_block(end_block);
             }
             Node::VarAssign { var_name, val_expr } => {
-                println!("{:#?}", vars.keys());
                 let val = compile_expr(val_expr, builder, functions, &vars, &IRType::Integer(true, 32));
-                builder.push_instruction(&IRType::Integer(true, 32), Operation::SetVar(vars[&var_name], val));
+                builder.push_instruction(&IRType::Void, Operation::SetVar(vars[&var_name], val));
             }
             _ => todo!(),
         }
@@ -106,7 +107,6 @@ fn compile_expr(expr: Expr, builder: &mut ModuleBuilder, functions: &mut HashMap
             }
         }
         Expr::Ident(i) => {
-            println!("{:#?}", variables.keys());
             builder.push_instruction(typ, Operation::GetVar(variables[&i])).unwrap()
         }
         Expr::CompOp { left, oper, right } => {

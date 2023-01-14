@@ -41,23 +41,24 @@ fn main() {
     let tok = preprocess(&mut lex);
     let ast = generate_ast(&tok, src);
     println!("{:#?}", ast.ast);
+    let mut file = std::fs::File::create("out.s").unwrap();
 
     let ir = compiler::ast_compiler::compiler(ast.ast);
     match args.target.to_ascii_lowercase().as_str() {
         "urcl" => {
             let mut vcode = ir.lower_to_vcode::<_, UrclSelector>();
             vcode.allocate_regs::<RegAlloc>();
-            vcode.emit_assembly();
+            vcode.emit_assembly(&mut file);
         }
         "rv64" | "riscv" => {
             let mut vcode = ir.lower_to_vcode::<_, RvSelector>();
             vcode.allocate_regs::<RegAlloc>();
-            vcode.emit_assembly();
+            vcode.emit_assembly(&mut file);
         }
         "x86" | "x86_64" | "x64" => {
             let mut vcode = ir.lower_to_vcode::<_, X64Selector>();
             vcode.allocate_regs::<RegAlloc>();
-            vcode.emit_assembly();
+            vcode.emit_assembly(&mut file);
         }
         _ => panic!("Unsupported arch.")
     }

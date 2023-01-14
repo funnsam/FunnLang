@@ -1,6 +1,6 @@
 func main() u8 {
     var a i32 = 1;
     while ( a > 10 ) {
-        
+        a = a + 1;
     }
 }
