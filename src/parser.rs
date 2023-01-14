@@ -1,6 +1,8 @@
 use crate::ast::nodes::Node;
 use crate::ast::nodes::Program;
 use crate::buffer::*;
+use crate::errors::*;
+use crate::parser::error::ErrorKind::*;
 use crate::to_mut_ptr;
 use crate::token::*;
 
@@ -8,6 +10,7 @@ use crate::token::*;
 pub struct Parser {
     pub buf: ParserBuffer,
     pub ast: Program,
+    pub err: ErrorHandler
 }
 
 impl Parser {
@@ -16,6 +19,7 @@ impl Parser {
         Self {
             buf: ParserBuffer::new(src),
             ast,
+            err: ErrorHandler::new()
         }
     }
 
@@ -26,7 +30,17 @@ impl Parser {
     pub fn expect_semicolon(&mut self) {
         match self.buf.next().unwrap().kind {
             TokenKind::SemiColon => (),
-            _ => panic!()
+            _ => {
+                self.err.add_error(
+                    Error::new(
+                        MissingSemiColon {
+                            found: self.buf.current().unwrap().kind
+                        },
+                        error::ErrorLevel::Error,
+                        self.buf.line
+                    )
+                )
+            }
         }
     }
 
@@ -92,12 +106,14 @@ fn find_scope_from_program(p: &Program) -> Option<&Program> {
 #[derive(Debug)]
 pub struct ParserBuffer {
     pub buf: Buffer<Token>,
+    pub line: usize
 }
 
 impl ParserBuffer {
     pub fn new(src: &Buffer<Token>) -> Self {
         Self {
             buf : src.clone(),
+            line: 0
         }
     }
     #[inline]
@@ -113,6 +129,7 @@ impl ParserBuffer {
         self.buf.index += 1;
         while self.buf.current().unwrap_or(Token { kind: TokenKind::Comma, str: "".to_string() }).kind == TokenKind::LF {
             self.buf.index += 1;
+            self.line += 1;
         }
     }
     #[inline]

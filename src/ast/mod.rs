@@ -145,7 +145,7 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                             Str(s) => s,
                             _ => panic!()
                         };
-                        p.buf.advance();
+                        p.expect_semicolon();
                         p.add_node(Node::AsmBlock(
                             asm_blk
                         ))
@@ -199,7 +199,16 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                 p.find_scope().escaped = true
             },
             _ => {
-                println!("Debug: Unexpected {:?}", t)
+                use crate::errors::*;
+                p.err.add_error(
+                    Error::new(
+                        error::ErrorKind::UnexpectedToken {
+                            found: t.kind
+                        },
+                        error::ErrorLevel::Error,
+                        p.buf.line
+                    )
+                )
             },
         }
     }
