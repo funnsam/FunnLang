@@ -25,7 +25,7 @@ impl std::fmt::Display for ErrorKind {
         use self::ErrorKind::*;
         match self {
             MissingSemiColon { found }
-                => write!(f, "Missing semicolon, found {:?}", found),
+                => write!(f, "Missing semicolon, found {}", found),
             UnclosedBracket
                 => write!(f, "Unclosed Bracket"),
             UnexpectedNodeType { found }

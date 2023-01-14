@@ -209,7 +209,17 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                 p.add_node(Node::CodeBlock(Program { body: Vec::new(), escaped: false }))
             }
             RCurlyBracket => {
-                p.find_scope().escaped = true
+                if p.is_at_root() {
+                    p.err.add_error(
+                        Error::new(
+                            ErrorKind::UnclosedBracket,
+                            ErrorLevel::Error,
+                            p.buf.line
+                        )
+                    )
+                } else {
+                    p.find_scope().escaped = true
+                }
             },
             _ => {
                 p.err.add_error(

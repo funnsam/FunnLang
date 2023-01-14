@@ -108,11 +108,11 @@ impl std::fmt::Display for Node {
         use self::Node::*;
         match self {
             VarDefine { var_type: _, var_name: _, val_expr: _ }
-                => write!(f, "Define variable"),
+                => write!(f, "Variable definition"),
             VarAssign { var_name: _, val_expr: _ }
-                => write!(f, "Assign variable"),
+                => write!(f, "Set variable"),
             FuncDefine { func_name: _, func_args: _, func_type: _, func_body: _ }
-                => write!(f, "Define function"),
+                => write!(f, "Function definition"),
             FuncCall { func_name: _, func_args: _ }
                 => write!(f, "Function call"),
             While { cond: _, body: _ }
