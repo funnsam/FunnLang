@@ -232,6 +232,15 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
             },
         }
     }
+    if !p.is_at_root() {
+        p.err.add_error(
+            Error::new(
+                ErrorKind::UnclosedBracket,
+                ErrorLevel::Error,
+            p.buf.line.min(_src.lines().count()-1)
+            )
+        )
+    }
     p
 }
 
