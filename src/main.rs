@@ -9,6 +9,8 @@ mod preprocess;
 mod parser;
 mod ast;
 
+mod compiler;
+
 use scanner::*;
 use lexer::*;
 use preprocess::*;
