@@ -13,9 +13,6 @@ pub enum ErrorKind {
     UnexpectedToken {
         found: TokenKind
     },
-    TreatAs {
-        into: Node
-    }
 }
 
 #[derive(Debug)]
@@ -37,8 +34,6 @@ impl std::fmt::Display for ErrorKind {
                 => write!(f, "Cannot find main function"),
             UnexpectedToken { found }
                 => write!(f, "Unexpected token {}", found),
-            TreatAs { into }
-                => write!(f, "Treat it as a {}", into)
         }
     }
 }
