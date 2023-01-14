@@ -1,4 +1,4 @@
-use std::{collections::HashMap, hash::Hash};
+use std::{collections::HashMap};
 
 use codegem::ir::{ModuleBuilder, Module, Value, FunctionId, VariableId, Type as IRType, ToIntegerOperation, Operation};
 
@@ -87,7 +87,6 @@ fn compile_expr(expr: Expr, builder: &mut ModuleBuilder, functions: &mut HashMap
                     let right = compile_expr(*right, builder, functions, variables, typ);
                     builder.push_instruction(typ, Operation::BitXor(left, right)).unwrap()
                 }
-                _ => todo!("Unimplimented operation")
             }
         }
         Expr::Ident(i) => {
