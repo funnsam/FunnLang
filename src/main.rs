@@ -2,6 +2,9 @@ mod buffer;
 
 mod token;
 mod scanner;
+
+mod errors;
+
 mod lexer;
 
 mod preprocess;

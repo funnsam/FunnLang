@@ -3,6 +3,7 @@ pub mod nodes;
 use core::panic;
 use std::vec;
 
+use crate::errors::{*, error::*};
 use crate::parser::*;
 use crate::buffer::*;
 use crate::token::{*, TokenKind::*};
@@ -19,10 +20,10 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                     "func" => {
                         let name = p.buf.next().unwrap();    // TODO error checking
                         if name.kind != Name {todo!()}
-                        if p.buf.next().unwrap().kind != LParenthesis {todo!()}
+                        p.buf.advance();
                         
-                        let mut raw_args: Vec<Vec<String>> = Vec::new();
-                        let mut tmp = Vec::with_capacity(2);
+                        let mut raw_args: Vec<Vec<Token>> = Vec::new();
+                        let mut tmp: Vec<Token> = Vec::with_capacity(2);
                         while let Some(t) = p.buf.next() {
                             if t.kind == RParenthesis {
                                 if !tmp.is_empty() {raw_args.push(tmp.clone())}
@@ -31,26 +32,39 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                                 raw_args.push(tmp.clone());
                                 tmp.clear()
                             } else {
-                                tmp.push(t.str)
+                                tmp.push(t)
                             }
                         }
                         drop(tmp);
 
                         let mut func_args = Vec::new();
-                        for el in raw_args.into_iter() {
-                            func_args.push(FuncDefArg{name: el[0].clone(), typ: Type::Name(el[1].clone())})
+                        for el in raw_args.iter_mut() {
+                            let name = el[0].str.clone(); el.remove(0);
+                            let typ  = parse_type(&mut Buffer::new(el.to_vec()));
+                            func_args.push(FuncDefArg{name, typ})
                         }
 
                         let func_body = Program { body: Vec::new(), escaped: false };
-                        let func_type = parse_type_from_parser(&mut p, &vec![RCurlyBracket]);
-                        
-                        p.add_node(Node::FuncDefine {
+                        let func_type = parse_type_from_parser(&mut p, &vec![LCurlyBracket]);
+
+                        let node = Node::FuncDefine {
                             func_name: name.str,
                             func_args,
                             func_type,
-                            func_body,
-                        });
-                        p.buf.advance();
+                            func_body: func_body.clone(),
+                        };
+
+                        if !p.is_at_root() {
+                            p.err.add_error(
+                                Error::new(
+                                    ErrorKind::UnexpectedNodeType { found: node },
+                                    ErrorLevel::Error,
+                                    p.buf.line
+                                )
+                            );
+                        } else {
+                            p.add_node(node);
+                        }
                     },
                     "var" => {
                         let name = p.buf.next().unwrap();
@@ -97,6 +111,14 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                             }
                         )
                     },
+                    "break" => {
+                        p.expect_semicolon();
+                        p.add_node(Node::Break)
+                    },
+                    "continue" => {
+                        p.expect_semicolon();
+                        p.add_node(Node::Continue)
+                    },
                     "if" => {
                         p.buf.advance();
                         let expr = parse_expr_from_parser(&mut p, &vec![RParenthesis]);
@@ -136,7 +158,7 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                             Str(s) => s,
                             _ => panic!()
                         };
-                        p.buf.advance();
+                        p.expect_semicolon();
                         p.add_node(Node::AsmBlock(
                             asm_blk
                         ))
@@ -177,22 +199,38 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                             }
                         }
 
-                        p.buf.advance();
+                        p.expect_semicolon();
                         p.add_node(Node::FuncCall { func_name: name, func_args: args });
                     },
                     _ => (),
                 }
             },
-            Macro => (),
-            Str(_) => (),
             LCurlyBracket => {
                 p.add_node(Node::CodeBlock(Program { body: Vec::new(), escaped: false }))
             }
             RCurlyBracket => {
-                p.find_scope().escaped = true
+                if p.is_at_root() {
+                    p.err.add_error(
+                        Error::new(
+                            ErrorKind::UnexpectedToken { found: t.kind },
+                            ErrorLevel::Error,
+                            p.buf.line
+                        )
+                    )
+                } else {
+                    p.find_scope().escaped = true
+                }
             },
             _ => {
-                println!("Debug: Unexpected {:?}.", t)
+                p.err.add_error(
+                    Error::new(
+                        ErrorKind::UnexpectedToken {
+                            found: t.kind
+                        },
+                        ErrorLevel::Error,
+                        p.buf.line
+                    )
+                )
             },
         }
     }
@@ -267,6 +305,7 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
         UnaryOp(UnaryOp),
         CompOp(CompOp),
         Expr(Expr),
+        Cast(Type),
         LParenthesis,
     }
     fn get_precedence(a: &ExprTmp) -> u8 {
@@ -333,6 +372,33 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
                     )
                 }
             },
+            RightArrow => {
+                ExprTmp::Cast(
+                    {
+                        let typ = {
+                            let mut tmp = Vec::new();
+                            match iter.next().unwrap().kind { LParenthesis => (), _ => panic!() }
+                            let mut lvl = 0;
+                            while let Some(v) = iter.next() {
+                                match v.kind {
+                                    RParenthesis => {
+                                        lvl -= 1;
+                                        if lvl == 0 {
+                                            tmp.push(v);
+                                            break;
+                                        }
+                                    }
+                                    LParenthesis => lvl += 1,
+                                    _ => ()
+                                }
+                                tmp.push(v)
+                            }
+                            parse_type(&mut Buffer::new(tmp))
+                        };
+                        typ
+                    }
+                )
+            },
             Logic => {
                 use CompOp::*;
                 ExprTmp::CompOp(match el.str.as_str() {
@@ -392,7 +458,7 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
     let iter = output.into_iter();
     for el in iter {
         match el {
-            ExprTmp::Number(_) | ExprTmp::Ident(_) | ExprTmp::Expr(_) => tmp1.push(el),
+            ExprTmp::Number(_) | ExprTmp::Ident(_) | ExprTmp::Expr(_) | ExprTmp::Cast(_) => tmp1.push(el),
             ExprTmp::BoolOp(op) => {
                 let last_2 = match tmp1.pop().unwrap() {
                     ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
@@ -432,6 +498,7 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
         ExprTmp::Number(v) => Expr::Number(*v),
         ExprTmp::Ident(v)  => Expr::Ident(v.clone()),
         ExprTmp::Expr(v)   => v.clone(),
+        ExprTmp::Cast(v) => Expr::Cast(v.clone()),
         _ => panic!()
     }
 }

@@ -1,6 +1,8 @@
 use crate::ast::nodes::Node;
 use crate::ast::nodes::Program;
 use crate::buffer::*;
+use crate::errors::*;
+use crate::parser::error::ErrorKind::*;
 use crate::to_mut_ptr;
 use crate::token::*;
 
@@ -8,6 +10,7 @@ use crate::token::*;
 pub struct Parser {
     pub buf: ParserBuffer,
     pub ast: Program,
+    pub err: ErrorHandler
 }
 
 impl Parser {
@@ -16,6 +19,7 @@ impl Parser {
         Self {
             buf: ParserBuffer::new(src),
             ast,
+            err: ErrorHandler::new()
         }
     }
 
@@ -23,10 +27,33 @@ impl Parser {
         self.find_scope().body.push(node)
     }
 
+    pub fn expect_semicolon(&mut self) {
+        match self.buf.next().unwrap().kind {
+            TokenKind::SemiColon => (),
+            _ => {
+                self.err.add_error(
+                    Error::new(
+                        MissingSemiColon {
+                            found: self.buf.current().unwrap().kind
+                        },
+                        error::ErrorLevel::Error,
+                        self.buf.line
+                    )
+                )
+            }
+        }
+    }
+
     pub fn find_scope(&mut self) -> &mut Program {
         let mut scope: &Program = &self.ast;
         while let Some(a) = find_scope_from_program(scope) {scope = a}
         to_mut_ptr(scope)
+    }
+
+    pub fn is_at_root(&self) -> bool {
+        let mut scope: &Program = &self.ast;
+        while let Some(a) = find_scope_from_program(scope) {scope = a}
+        scope == &self.ast
     }
 
     pub fn find_branch_block(&mut self) -> &mut Node {
@@ -85,12 +112,14 @@ fn find_scope_from_program(p: &Program) -> Option<&Program> {
 #[derive(Debug)]
 pub struct ParserBuffer {
     pub buf: Buffer<Token>,
+    pub line: usize
 }
 
 impl ParserBuffer {
     pub fn new(src: &Buffer<Token>) -> Self {
         Self {
             buf : src.clone(),
+            line: 0
         }
     }
     #[inline]
@@ -106,6 +135,7 @@ impl ParserBuffer {
         self.buf.index += 1;
         while self.buf.current().unwrap_or(Token { kind: TokenKind::Comma, str: "".to_string() }).kind == TokenKind::LF {
             self.buf.index += 1;
+            self.line += 1;
         }
     }
     #[inline]

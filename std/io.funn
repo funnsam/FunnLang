@@ -1,3 +1,15 @@
 func out_char(ch u8) void {
-	
+
+}
+
+func println(str &u8) void {
+
+}
+
+func println_u(num uint) void {
+
+}
+
+func println_i(num int) void {
+
 }

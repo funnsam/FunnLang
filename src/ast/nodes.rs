@@ -36,6 +36,8 @@ pub enum Node {
         from: Expr, to: Expr,
         body: Program
     },
+    Break,
+    Continue,
     Branch {
         cond: Vec<Expr>,
         body: Vec<Program>
@@ -99,7 +101,8 @@ pub enum Expr {
         left    : Box<Expr>,
         oper    : CompOp,
         right   : Box<Expr>
-    }
+    },
+    Cast(Type)
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -119,4 +122,36 @@ pub enum CompOp {
     EQ, NEQ,
     LT, LTE,
     GT, GTE
+}
+
+impl std::fmt::Display for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use self::Node::*;
+        match self {
+            VarDefine { var_type: _, var_name: _, val_expr: _ }
+                => write!(f, "Variable definition"),
+            VarAssign { var_name: _, val_expr: _ }
+                => write!(f, "Set variable"),
+            FuncDefine { func_name: _, func_args: _, func_type: _, func_body: _ }
+                => write!(f, "Function definition"),
+            FuncCall { func_name: _, func_args: _ }
+                => write!(f, "Function call"),
+            While { cond: _, body: _ }
+                => write!(f, "While loop"),
+            For { loopv: _, from: _, to: _, body: _ }
+                => write!(f, "For loop"),
+            Break
+                => write!(f, "Break"),
+            Continue
+                => write!(f, "Continue"),
+            Branch { cond: _, body: _ }
+                => write!(f, "Conditional branch"),
+            CodeBlock(_)
+                => write!(f, "Code block"),
+            AsmBlock(_)
+                => write!(f, "Assembly code block"),
+            Return(_)
+                => write!(f, "Return")
+        }
+    }
 }

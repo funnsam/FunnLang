@@ -6,8 +6,8 @@ pub fn lex(s: &mut Scanner) -> Buffer<Token> {
     while let Some(c) = s.next() {
         match c {
             '@' => { s._while(|c| c.is_alphanumeric()); s.create(Macro)},
-            'a'..='z' | 'A'..='Z' => {
-                s._while(|c| c.is_alphanumeric());
+            'a'..='z' | 'A'..='Z' | '_' => {
+                s._while(|c| c.is_alphanumeric() || c == '_');
                 match s.str().to_lowercase().as_str() {
                     "if"    | "else"    |
                     "var"   |
@@ -19,7 +19,14 @@ pub fn lex(s: &mut Scanner) -> Buffer<Token> {
                 }
             },
             '0'..='9' => {let a = parse_number(s, 0).unwrap(); s.create(Number(a));}
-            '+' | '-' | '/' | '%' | '^' | '|' => s.create(MathSymbol),
+            '+' | '/' | '%' | '^' | '|' => s.create(MathSymbol),
+            '-' => {
+                if s._if(|c| c == '>') {
+                    s.create(RightArrow)
+                } else {
+                    s.create(MathSymbol)
+                }
+            }
             '*' => s.create(Star),
             '&' => s.create(Ampersand),
             '!' => {

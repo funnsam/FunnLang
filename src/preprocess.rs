@@ -5,7 +5,7 @@ use crate::lexer::lex;
 use crate::token::*;
 
 pub fn preprocess(s: &mut Buffer<Token>) -> Buffer<Token> {
-    let mut final_buf = s.clone();
+    let mut extra: Buffer<Token> = Buffer::new(Vec::new());
     'scan_for_macro: while let Some(a) = s.next() {
         match a.kind {
             TokenKind::Macro => {
@@ -13,11 +13,11 @@ pub fn preprocess(s: &mut Buffer<Token>) -> Buffer<Token> {
                     "@import" => {
                         let src = std::fs::read_to_string(match s.next().unwrap().kind {
                             TokenKind::Str(v) => {
-                                match &v[0..0] {
+                                match &v[0..1] {
                                     "*" => {
                                         let mut a = exec_path();
                                         a.push("std");
-                                        a.push(v + ".funn");
+                                        a.push(v[1..v.len()].to_owned() + ".funn");
                                         format!("{}", a.display())
                                     }
                                     _ => v
@@ -26,11 +26,14 @@ pub fn preprocess(s: &mut Buffer<Token>) -> Buffer<Token> {
                             _ => panic!()
                         }).expect("F");
                         let mut tmp = lex(&mut crate::scanner::Scanner::new(src.chars().collect::<Vec<char>>()));
-                        let tok = preprocess(&mut tmp);
-                        final_buf.data.extend(tok.data);
-                    }
+                        let mut tok = preprocess(&mut tmp);
+                        extra.data.append(&mut tok.data);
+                        s.data.remove(s.index);
+                        s.data.remove(s.index-1);
+                        s.index -= 2;
+                    },
                     _ => panic!()
-                }
+                };
             },
             _ => {
                 while let Some(b) = s.next() {
@@ -41,7 +44,8 @@ pub fn preprocess(s: &mut Buffer<Token>) -> Buffer<Token> {
             }
         }
     }
-    final_buf
+    extra.data.append(&mut s.data);
+    extra
 }
 
 fn exec_path() -> PathBuf {
