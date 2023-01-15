@@ -1,10 +1,6 @@
 func main() u8 {
-    var a u16 = 1;
-    var b u16 = 0;
-    var c u16 = 10;
+    var c uint = 10;
     while (c) {
-        a = b + a;
-        b = a - b;
         c = c - 1;
     }
 }

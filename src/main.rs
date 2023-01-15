@@ -44,6 +44,7 @@ fn main() {
     let mut file = std::fs::File::create("out.s").unwrap();
 
     let ir = compiler::ast_compiler::compiler(ast.ast);
+    println!("{}", ir);
     match args.target.to_ascii_lowercase().as_str() {
         "urcl" => {
             let mut vcode = ir.lower_to_vcode::<_, UrclSelector>();

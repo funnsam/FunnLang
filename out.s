@@ -9,7 +9,7 @@ main:
     push %r14
     push %r15
 .main.L0:
-    mov %r15, 1
+    mov %r15, 1321
     mov %r14, 0
     mov %r12, 10
     mov %r13, %r15
