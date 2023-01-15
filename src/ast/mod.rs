@@ -84,13 +84,11 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                     },
                     "while" => {
                         p.buf.advance();
-                        while let Some(t) = p.buf.next() {
-                            if t.kind == RParenthesis {break}
-                        }
+                        let expr = parse_expr_from_parser(&mut p, &vec![RParenthesis]);
                         p.buf.advance();
                         p.add_node(
                             Node::While {
-                                cond: Expr::Number(1),
+                                cond: expr,
                                 body: Program { body: Vec::new(), escaped: false }
                             }
                         )

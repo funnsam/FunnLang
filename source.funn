@@ -1,8 +1,6 @@
 func main() u8 {
-    func nest() u8 {
-        asm "nope"
+    var c uint = 10;
+    while (c) {
+        c = c - 1;
     }
-    ->
-    ->
-    bruh()
 }
