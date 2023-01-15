@@ -45,9 +45,9 @@ fn main() {
     if ast.err.errors.len() == 0 {
         println!("{:#?}", ast.ast);
     } else {
-        println!("{}", ast.err.as_string(srcs, files))
+        println!("{}", ast.err.as_string(srcs, files));
+        return
     }
-    
     let mut file = std::fs::File::create("out.s").unwrap();
     let ir = compiler::ast_compiler::compiler(ast.ast);
     println!("{}", ir);
@@ -70,7 +70,6 @@ fn main() {
         _ => panic!("Unsupported arch.")
     }
 }
-
 pub fn to_mut_ptr<T>(a: &T) -> &mut T {
     unsafe {
         &mut *(a as *const T as *mut T)
