@@ -1,4 +1,4 @@
-func out_char(ch u8) void {
+func out_char(ch u8) void {func abc() void{}
 
 }
 
