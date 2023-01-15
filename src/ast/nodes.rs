@@ -65,15 +65,27 @@ impl Type {
         match self {
             Type::Name(n) => {
                 match n.as_str() {
-                    "i32" => IRType::Integer(true, 32),
-                    "i16" => IRType::Integer(true, 16),
-                    "i8" => IRType::Integer(true, 8),
-                    "u32" => IRType::Integer(false, 32),
-                    "u16" => IRType::Integer(false, 16),
-                    "u8" => IRType::Integer(false, 8),
+                    "i8"    => IRType::Integer(true, 8),
+                    "i16"   => IRType::Integer(true, 16),
+                    "i32"   => IRType::Integer(true, 32),
+                    "i64"   => IRType::Integer(true, 64),
+
+                    "u8"    => IRType::Integer(false, 8),
+                    "u16"   => IRType::Integer(false, 16),
+                    "u32"   => IRType::Integer(false, 32),
+                    "u64"   => IRType::Integer(false, 64),
+
+                    "int"   => IRType::Integer(true, 64),
+                    "uint"  => IRType::Integer(false, 64),
+
+                    "void"  => IRType::Void,
                     _ => todo!("Unimplimented type.")
                 }
-            }
+            },
+            Type::Pointer(t) => {
+                // IRType::Pointer(t)
+                IRType::Void
+            },
             _ => todo!("Unimplimented type.")
         }
     }
@@ -102,7 +114,10 @@ pub enum Expr {
         oper    : CompOp,
         right   : Box<Expr>
     },
-    Cast(Type)
+    Cast {
+        typ : Type,
+        val : Box<Expr>
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

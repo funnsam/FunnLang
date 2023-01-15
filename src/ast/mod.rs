@@ -10,7 +10,7 @@ use crate::token::{*, TokenKind::*};
 
 use self::nodes::*;
 
-pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
+pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
     let mut p = Parser::new(tok);
     
     while let Some(t) = p.buf.next() {
@@ -40,7 +40,7 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                         let mut func_args = Vec::new();
                         for el in raw_args.iter_mut() {
                             let name = el[0].str.clone(); el.remove(0);
-                            let typ  = parse_type(&mut Buffer::new(el.to_vec()));
+                            let typ  = parse_type(&mut Buffer::new(el.to_vec()), &mut p);
                             func_args.push(FuncDefArg{name, typ})
                         }
 
@@ -59,7 +59,8 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                                 Error::new(
                                     ErrorKind::UnexpectedNodeType { found: node },
                                     ErrorLevel::Error,
-                                    p.buf.line
+                                    p.buf.line,
+                                    p.buf.file
                                 )
                             );
                         } else {
@@ -193,7 +194,7 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                         let mut args: Vec<Expr> = Vec::new();
                         for el in raw_args.into_iter() {
                             if !el.is_empty() {
-                                args.push(parse_expr(&mut Buffer::new(el)))
+                                args.push(parse_expr(&mut Buffer::new(el), &mut p))
                             }
                         }
 
@@ -212,7 +213,8 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                         Error::new(
                             ErrorKind::UnexpectedToken { found: t.kind },
                             ErrorLevel::Error,
-                            p.buf.line
+                            p.buf.line,
+                            p.buf.file
                         )
                     )
                 } else {
@@ -226,7 +228,8 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
                             found: t.kind
                         },
                         ErrorLevel::Error,
-                        p.buf.line
+                        p.buf.line,
+                        p.buf.file
                     )
                 )
             },
@@ -237,7 +240,8 @@ pub fn generate_ast(tok: &Buffer<Token>, _src: String) -> Parser {
             Error::new(
                 ErrorKind::UnclosedBracket,
                 ErrorLevel::Error,
-            p.buf.line.min(_src.lines().count()-1)
+            p.buf.line,
+            p.buf.file
             )
         )
     }
@@ -250,20 +254,31 @@ fn parse_type_from_parser(p: &mut Parser, stop_tokens: &Vec<TokenKind>) -> Type 
         if stop_tokens.contains(&a.kind) { break }
         tmp.push(a);
     };
-    parse_type(&mut Buffer::new(tmp))
+    parse_type(&mut Buffer::new(tmp), p)
 }
 
-fn parse_type(toks: &mut Buffer<Token>) -> Type {
+fn parse_type(toks: &mut Buffer<Token>, p: &mut Parser) -> Type{
     toks.data.reverse();
 
     let mut tmp: Type = Type::Name(match toks.data[0].kind {
         Name => toks.data[0].str.clone(),
-        _ => panic!()
+        _ => {
+            p.err.add_error(
+                Error::new(
+                    ErrorKind::UnexpectedToken { found: toks.data[0].clone().kind },
+                    ErrorLevel::Error,
+                    p.buf.line,
+                    p.buf.file
+                )
+            );
+            "u8".to_string()
+        }
     });
+
     while let Some(tok) = toks.next() {
         match tok.kind {
             Ampersand     => tmp = Type::Pointer(Box::new(tmp)),
-            RBracket    => {
+            RBracket      => {
                 let size = match toks.next().unwrap().kind {
                     Number(v) => v,
                     _ => panic!()
@@ -271,11 +286,7 @@ fn parse_type(toks: &mut Buffer<Token>) -> Type {
                 toks.next();
                 tmp = Type::Array(Box::new(tmp), size as usize)
             },
-            Name => {
-                if toks.index != 0 {
-                    panic!()
-                }
-            },
+            Name => (),
             _ => panic!("Bruh {:?}", tok)
         }
     }
@@ -300,10 +311,10 @@ fn parse_expr_from_parser(p: &mut Parser, stop_tokens: &Vec<TokenKind>) -> Expr 
 
         tmp.push(a);
     };
-    parse_expr(&mut Buffer::new(tmp))
+    parse_expr(&mut Buffer::new(tmp), p)
 }
 
-fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
+fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
     #[derive(Debug, Clone, PartialEq)]
     enum ExprTmp {
         Number(i64),
@@ -327,14 +338,15 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
                 }
             },
             ExprTmp::CompOp(_)  => 4,
+            ExprTmp::Cast(_)    => 5,
             _ => 0,
         }
     }
-    fn as_expr_tmp(el: Token, is_unary: bool, iter: &mut Buffer<Token>) -> ExprTmp {
+    fn as_expr_tmp(el: Token, is_unary: bool, iter: &mut Buffer<Token>, p: &mut Parser) -> ExprTmp {
         match el.kind {
             Number(v) => ExprTmp::Number(v),
             Name => {
-                match iter.peek().unwrap_or(Token { kind: LF, str: "\n".to_string() }).kind {
+                match iter.peek().unwrap_or(Token { kind: LF(0, 0), str: "\n".to_string() }).kind {
                     LParenthesis => {
                         let name = iter.current().unwrap();
                         iter.next();
@@ -350,7 +362,7 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
                         let mut args: Vec<Expr> = Vec::new();
                         for el in raw_args.into_iter() {
                             if !el.is_empty() {
-                                args.push(parse_expr(&mut Buffer::new(el)))
+                                args.push(parse_expr(&mut Buffer::new(el), p))
                             }
                         }
 
@@ -384,7 +396,6 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
                     {
                         let typ = {
                             let mut tmp = Vec::new();
-                            match iter.next().unwrap().kind { LParenthesis => (), _ => panic!() }
                             let mut lvl = 0;
                             while let Some(v) = iter.next() {
                                 match v.kind {
@@ -400,7 +411,7 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
                                 }
                                 tmp.push(v)
                             }
-                            parse_type(&mut Buffer::new(tmp))
+                            parse_type(&mut Buffer::new(tmp), p)
                         };
                         typ
                     }
@@ -433,18 +444,18 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
         let _a = a.kind.clone();
         match a.kind {
             Number(v) => output.push(ExprTmp::Number(v)),
-            Name => output.push(as_expr_tmp(a, false, toks)),
-            MathSymbol | Star | Ampersand | Logic => {
+            Name => output.push(as_expr_tmp(a, false, toks, p)),
+            MathSymbol | Star | Ampersand | Logic | RightArrow => {
                 let is_unary = is_math(prev.unwrap_or(MathSymbol));
                 while let Some(b) = op_stk.pop() {
-                    if b != ExprTmp::LParenthesis && get_precedence(&b) >= get_precedence(&as_expr_tmp(a.clone(), is_unary, toks)) {
+                    if b != ExprTmp::LParenthesis && get_precedence(&b) >= get_precedence(&as_expr_tmp(a.clone(), is_unary, toks, p)) {
                         output.push(b);
                     } else {
                         op_stk.push(b);
                         break
                     }
                 };
-                op_stk.push(as_expr_tmp(a, is_unary, toks));
+                op_stk.push(as_expr_tmp(a, is_unary, toks, p));
             },
             LParenthesis => op_stk.push(ExprTmp::LParenthesis),
             RParenthesis => {
@@ -460,12 +471,11 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
 
     output.append(&mut op_stk);
 
-
     let mut tmp1 = Vec::new();
     let iter = output.into_iter();
     for el in iter {
         match el {
-            ExprTmp::Number(_) | ExprTmp::Ident(_) | ExprTmp::Expr(_) | ExprTmp::Cast(_) => tmp1.push(el),
+            ExprTmp::Number(_) | ExprTmp::Ident(_) | ExprTmp::Expr(_) => tmp1.push(el),
             ExprTmp::BoolOp(op) => {
                 let last_2 = match tmp1.pop().unwrap() {
                     ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
@@ -494,6 +504,13 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
                     _ => panic!()
                 };
                 tmp1.push(ExprTmp::Expr(Expr::CompOp { left: Box::new(last_1), oper: op, right: Box::new(last_2) }))
+            },
+            ExprTmp::Cast(typ) => {
+                let val = match tmp1.pop().unwrap() {
+                    ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
+                    _ => panic!()
+                };
+                tmp1.push(ExprTmp::Expr(Expr::Cast { typ, val: Box::new(val) }))
             }
             ExprTmp::LParenthesis   => panic!("Bruh {:?}", el)
         }
@@ -505,7 +522,6 @@ fn parse_expr(toks: &mut Buffer<Token>) -> Expr {
         ExprTmp::Number(v) => Expr::Number(*v),
         ExprTmp::Ident(v)  => Expr::Ident(v.clone()),
         ExprTmp::Expr(v)   => v.clone(),
-        ExprTmp::Cast(v) => Expr::Cast(v.clone()),
         _ => panic!()
     }
 }

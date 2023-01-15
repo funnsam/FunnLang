@@ -37,7 +37,8 @@ impl Parser {
                             found: self.buf.current().unwrap().kind
                         },
                         error::ErrorLevel::Error,
-                        self.buf.line
+                        self.buf.line,
+                        self.buf.file
                     )
                 )
             }
@@ -112,14 +113,16 @@ fn find_scope_from_program(p: &Program) -> Option<&Program> {
 #[derive(Debug)]
 pub struct ParserBuffer {
     pub buf: Buffer<Token>,
-    pub line: usize
+    pub line: usize,
+    pub file: usize
 }
 
 impl ParserBuffer {
     pub fn new(src: &Buffer<Token>) -> Self {
         Self {
             buf : src.clone(),
-            line: 0
+            line: 0,
+            file: 0,
         }
     }
     #[inline]
@@ -133,9 +136,15 @@ impl ParserBuffer {
     #[inline]
     pub fn advance(&mut self) {
         self.buf.index += 1;
-        while self.buf.current().unwrap_or(Token { kind: TokenKind::Comma, str: "".to_string() }).kind == TokenKind::LF {
+        while match self.buf.current().unwrap_or(Token { kind: TokenKind::Comma, str: "".to_string() }).kind {
+            TokenKind::LF(l, f) => {
+                self.line = l;
+                self.file = f;
+                true
+            },
+            _ => false
+        } {
             self.buf.index += 1;
-            self.line += 1;
         }
     }
     #[inline]

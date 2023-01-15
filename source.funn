@@ -1,5 +1,7 @@
+@import "*io"
+
 func main() u8 {
-    var c uint = 10;
+    var c u8 = 10;
     while (c) {
         c = c - 1;
     }
