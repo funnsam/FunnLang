@@ -2,7 +2,8 @@ use crate::buffer::Buffer;
 use crate::scanner::*;
 use crate::token::{*, TokenKind::*};
 
-pub fn lex(s: &mut Scanner) -> Buffer<Token> {
+pub fn lex(s: &mut Scanner, file: usize) -> Buffer<Token> {
+    let mut line = 1;
     while let Some(c) = s.next() {
         match c {
             '@' => { s._while(|c| c.is_alphanumeric()); s.create(Macro)},
@@ -38,7 +39,10 @@ pub fn lex(s: &mut Scanner) -> Buffer<Token> {
             }
             ' ' | '\t' | '\r' => { s._while(|c| c == ' ' || c == '\t' || c == '\r'); s.skip()},
             '.' => {if s._if(|c| c == '.') {s.create(To)} else {s.create(Unknown)}}
-            '\n'=> s.create(LF),
+            '\n'=> {
+                s.create(LF(line, file));
+                line += 1;
+            },
             ',' => s.create(Comma),
             '{' => s.create(LCurlyBracket),
             '}' => s.create(RCurlyBracket),

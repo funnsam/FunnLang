@@ -81,7 +81,10 @@ pub enum Expr {
         oper    : CompOp,
         right   : Box<Expr>
     },
-    Cast(Type)
+    Cast {
+        typ : Type,
+        val : Box<Expr>
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

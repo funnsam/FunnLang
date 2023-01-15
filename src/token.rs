@@ -7,7 +7,7 @@ pub struct Token {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
     Keyword, Name, Number(i64),
-    LF,
+    LF(usize, usize),
     Comma, Colon, SemiColon, EqualSign, MathSymbol, Logic, To, Ampersand, Star, Macro, RightArrow,
     LCurlyBracket, RCurlyBracket, LBracket, RBracket, LParenthesis, RParenthesis,
     Char(char), Str(String),
@@ -19,7 +19,7 @@ impl std::fmt::Display for TokenKind {
         use self::TokenKind::*;
         write!(f, "{}", match self {
             Keyword => "Keyword", Name => "Name", Number(_) => "Number",
-            LF => "Line feed",
+            LF(_, _) => "Line feed",
             Comma => "Comma", Colon => "Colon", SemiColon => "Semicolon", EqualSign => "Equal sign", MathSymbol => "Math symbol",
             Logic => "Comparason", To => "To", Ampersand => "Ampersand", Star => "Star", Macro => "Macro", RightArrow => "Right arrow",
             LCurlyBracket => "Left curly bracket", RCurlyBracket => "Right curly bracket",
