@@ -1,5 +1,5 @@
 ## Syntax:
-```c
+```go
 // Comment
 // <- single line comments
 /* <- start of multiline comment
@@ -17,11 +17,11 @@ and the end of it -> */
    str  // Same as char arrays
 
 // Type: alias
-type char alias: u8;
-type bool alias: u8;
+type char alias = u8;
+type bool alias = u8;
 
 // Type: arrays
-<type>[<size>]
+[<size>]<type>
 u8[123]
 
 // Strings and chars
@@ -29,10 +29,10 @@ u8[123]
 'a'        // <- a char
 
 // Variables
-var <var_name>: <var_type> = <init_val>;
+var <var_name> <var_type> = <init_val>;
 
 // Functions
-func <func_name>(<args..>) <ret_type> {
+func <func_name>(<arg_name, arg_type..>) <ret_type> {
     <func_body>
 }
 
@@ -46,9 +46,11 @@ if (<cond>) {
 // } else {
 //     <body>
 }
+
 while (<cond>) {
     <body>
 }
+
 for (<iter_var>: <start>..<end>) {
     <body>
 }
