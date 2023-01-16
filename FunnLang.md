@@ -32,7 +32,7 @@ u8[123]
 var <var_name> <var_type> = <init_val>;
 
 // Functions
-func <func_name>([<arg_name arg_type][, ..]) <ret_type> {
+func <func_name>([<arg_name> <arg_type>][, ..]) <ret_type> {
     <func_body>
 }
 
