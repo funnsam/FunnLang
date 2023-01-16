@@ -6,3 +6,14 @@ func main() u8 {
         c = c - 1;
     }
 }
+
+// comment dont aaa
+
+
+
+/*
+multiline comment
+
+
+owo
+*/

@@ -14,6 +14,8 @@ mod ast;
 
 mod compiler;
 
+use std::process::exit;
+
 use codegem::regalloc::RegAlloc;
 use codegem::arch::{urcl::UrclSelector, rv64::RvSelector, x64::X64Selector};
 use scanner::*;
@@ -29,7 +31,10 @@ struct Args {
     input_file: String,
 
     #[arg(short, long, default_value="urcl")]
-    target: String
+    target: String,
+
+    #[arg(short, long, default_value="out.s")]
+    output: String
 }
 
 fn main() {
@@ -48,7 +53,7 @@ fn main() {
         println!("{}", ast.err.as_string(srcs, files));
         return
     }
-    let mut file = std::fs::File::create("out.s").unwrap();
+    let mut file = std::fs::File::create(args.output).unwrap();
     let ir = compiler::ast_compiler::compiler(ast.ast);
     println!("{}", ir);
     match args.target.to_ascii_lowercase().as_str() {
@@ -67,7 +72,10 @@ fn main() {
             vcode.allocate_regs::<RegAlloc>();
             vcode.emit_assembly(&mut file);
         }
-        _ => panic!("Unsupported arch.")
+        _ => {
+            println!("\x1b[1;31mUnsupported target '{}' had been specified\x1b[0m", args.target);
+            exit(1)
+        }
     }
 }
 pub fn to_mut_ptr<T>(a: &T) -> &mut T {

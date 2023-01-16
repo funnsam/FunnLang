@@ -30,13 +30,13 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
                 builder.switch_to_block(b);
                 compile(func_body, builder, functions, &vars);
                 builder.set_terminator(Terminator::ReturnVoid);
-            }
+            },
             Node::VarDefine { var_type, var_name, val_expr } => {
                 let var = builder.push_variable(&var_name, &var_type.clone().to_ir_type()).unwrap();
                 vars.insert(var_name, var);
                 let expr = compile_expr(val_expr, builder, functions, &vars, &var_type.clone().to_ir_type());
                 builder.push_instruction(&var_type.to_ir_type(), Operation::SetVar(var, expr));
-            }
+            },
             Node::While { cond, body } => {
                 let cond_block = builder.push_block().unwrap();
                 builder.set_terminator(Terminator::Jump(cond_block));
@@ -49,11 +49,11 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
                 compile(body, builder, functions, &vars);
                 builder.set_terminator(Terminator::Jump(cond_block));
                 builder.switch_to_block(end_block);
-            }
+            },
             Node::VarAssign { var_name, val_expr } => {
                 let val = compile_expr(val_expr, builder, functions, &vars, &IRType::Integer(true, 32));
                 builder.push_instruction(&IRType::Void, Operation::SetVar(vars[&var_name], val));
-            }
+            },
             _ => todo!(),
         }
     }

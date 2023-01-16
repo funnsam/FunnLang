@@ -20,14 +20,14 @@ pub fn lex(s: &mut Scanner, file: usize) -> Buffer<Token> {
                 }
             },
             '0'..='9' => {let a = parse_number(s, 0).unwrap(); s.create(Number(a));}
-            '+' | '/' | '%' | '^' | '|' => s.create(MathSymbol),
+            '+' | '%' | '^' | '|' => s.create(MathSymbol),
             '-' => {
                 if s._if(|c| c == '>') {
                     s.create(RightArrow)
                 } else {
                     s.create(MathSymbol)
                 }
-            }
+            },
             '*' => s.create(Star),
             '&' => s.create(Ampersand),
             '!' => {
@@ -36,7 +36,7 @@ pub fn lex(s: &mut Scanner, file: usize) -> Buffer<Token> {
                 } else {
                     s.create(MathSymbol)
                 }
-            }
+            },
             ' ' | '\t' | '\r' => { s._while(|c| c == ' ' || c == '\t' || c == '\r'); s.skip()},
             '.' => {if s._if(|c| c == '.') {s.create(To)} else {s.create(Unknown)}}
             '\n'=> {
@@ -53,6 +53,38 @@ pub fn lex(s: &mut Scanner, file: usize) -> Buffer<Token> {
             ':' => s.create(Colon),
             ';' => s.create(SemiColon),
             '=' => {if s._if(|c| c == '=') { s.create(Logic) } else { s.create(EqualSign) }},
+            '/' => {
+                match s.next().unwrap() {
+                    '/' => {
+                        while let Some(t) = s.next() {
+                            match t {
+                                '\n' => {
+                                    s.skip();
+                                    break
+                                },
+                                _ => ()
+                            }
+                        }
+                    },
+                    '*' => {
+                        while let Some(t) = s.next() {
+                            match t {
+                                '*' => {
+                                    match s.next().unwrap() {
+                                        '/' => {
+                                            s.skip();
+                                            break
+                                        }
+                                        _ => ()
+                                    }
+                                },
+                                _ => ()
+                            }
+                        }
+                    }
+                    _ => s.create(MathSymbol)
+                }
+            },
             '<' => {
                 if s._if(|c| c == '=') {
                     s.create(Logic)

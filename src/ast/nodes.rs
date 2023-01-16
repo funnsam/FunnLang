@@ -44,7 +44,7 @@ pub enum Node {
     },
     CodeBlock(Program),
     AsmBlock(String),
-    Return(Expr)
+    Return(Option<Expr>)
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -144,29 +144,29 @@ impl std::fmt::Display for Node {
         use self::Node::*;
         match self {
             VarDefine { var_type: _, var_name: _, val_expr: _ }
-                => write!(f, "Variable definition"),
+                => write!(f, "variable definition"),
             VarAssign { var_name: _, val_expr: _ }
-                => write!(f, "Set variable"),
+                => write!(f, "set variable"),
             FuncDefine { func_name: _, func_args: _, func_type: _, func_body: _ }
-                => write!(f, "Function definition"),
+                => write!(f, "function definition"),
             FuncCall { func_name: _, func_args: _ }
-                => write!(f, "Function call"),
+                => write!(f, "function call"),
             While { cond: _, body: _ }
-                => write!(f, "While loop"),
+                => write!(f, "while loop"),
             For { loopv: _, from: _, to: _, body: _ }
-                => write!(f, "For loop"),
+                => write!(f, "for loop"),
             Break
-                => write!(f, "Break"),
+                => write!(f, "break"),
             Continue
-                => write!(f, "Continue"),
+                => write!(f, "continue"),
             Branch { cond: _, body: _ }
-                => write!(f, "Conditional branch"),
+                => write!(f, "conditional branch"),
             CodeBlock(_)
-                => write!(f, "Code block"),
+                => write!(f, "code block"),
             AsmBlock(_)
-                => write!(f, "Assembly code block"),
+                => write!(f, "assembly code block"),
             Return(_)
-                => write!(f, "Return")
+                => write!(f, "return")
         }
     }
 }

@@ -2,12 +2,10 @@ use self::error::{ErrorKind, ErrorLevel};
 
 pub mod error;
 
-#[derive(Debug)]
 pub struct ErrorHandler {
     pub errors: Vec<Error>
 }
 
-#[derive(Debug)]
 pub struct Error {
     pub err: error::ErrorKind,
     pub lvl: error::ErrorLevel,
@@ -39,14 +37,17 @@ impl ErrorHandler {
 
         use std::fmt::Write;
         for el in self.errors.iter() {
-            writeln!(&mut tmp, "{}: {}:", el.lvl, el.err).unwrap();
-            writeln!(&mut tmp, "    \x1b[0;33m--> \x1b[0;4m{}\x1b[0m",
+            writeln!(&mut tmp, "{} {}:", el.lvl, el.err).unwrap();
+            writeln!(&mut tmp, "\x1b[0;36m      = {}\x1b[0m",
                 filenames[el.at_file]
             ).unwrap();
-            writeln!(&mut tmp, "{}{} |  {}",
+            writeln!(&mut tmp, "\x1b[0;36m{}{} |\x1b[0;0m  {}",
                 " ".repeat(4 - format!("{}", el.at_line).len().min(0)),
                 el.at_line.min(lines[el.at_file].len()-1) + 1,
                 lines[el.at_file][el.at_line.min(lines[el.at_file].len()-1)].trim()
+            ).unwrap();
+            writeln!(&mut tmp, "\x1b[0;36m      |\x1b[0;33m  {}\x1b[0;0m\n",
+                "^".repeat(lines[el.at_file][el.at_line.min(lines[el.at_file].len()-1)].trim().len())
             ).unwrap();
         }
         tmp.pop();

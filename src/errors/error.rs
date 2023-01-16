@@ -1,9 +1,10 @@
 use crate::{token::TokenKind, ast::nodes::Node};
 
-#[derive(Debug)]
+
 pub enum ErrorKind {
-    MissingSemiColon {
-        found: TokenKind
+    ExpectsButFound {
+        expect  : TokenKind,
+        found   : TokenKind
     },
     UnclosedBracket,
     UnexpectedNodeType {
@@ -13,9 +14,10 @@ pub enum ErrorKind {
     UnexpectedToken {
         found: TokenKind
     },
+    MathError,
 }
 
-#[derive(Debug)]
+
 pub enum ErrorLevel {
     Error, Warning, Info
 }
@@ -24,16 +26,18 @@ impl std::fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use self::ErrorKind::*;
         match self {
-            MissingSemiColon { found }
-                => write!(f, "Missing semicolon, found {}", found),
+            ExpectsButFound { expect, found }
+                => write!(f, "expecting {}, but found {}", expect, found),
             UnclosedBracket
-                => write!(f, "Unclosed Bracket"),
+                => write!(f, "unclosed bracket"),
             UnexpectedNodeType { found }
-                => write!(f, "Unexpected {}", found),
+                => write!(f, "unexpected {}", found),
             MainNotFound
-                => write!(f, "Cannot find main function"),
+                => write!(f, "cannot find main function"),
             UnexpectedToken { found }
-                => write!(f, "Unexpected token {}", found),
+                => write!(f, "unexpected token {}", found),
+            MathError
+                => write!(f, "math error"),
         }
     }
 }
@@ -42,9 +46,9 @@ impl std::fmt::Display for ErrorLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use self::ErrorLevel::*;
         match self {
-            Error => write!(f, "\x1b[1;31mError\x1b[0;0m"),
-            Warning => write!(f, "\x1b[1;33mWarning\x1b[0;0m"),
-            Info => write!(f, "\x1b[1;36mInfo\x1b[0;0m")
+            Error => write!(f, "\x1b[1;31merror:\x1b[0;0m"),
+            Warning => write!(f, "\x1b[1;33mwarning:\x1b[0;0m"),
+            Info => write!(f, "\x1b[1;36minfo:\x1b[0;0m")
         }
     }
 }

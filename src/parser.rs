@@ -2,11 +2,10 @@ use crate::ast::nodes::Node;
 use crate::ast::nodes::Program;
 use crate::buffer::*;
 use crate::errors::*;
-use crate::parser::error::ErrorKind::*;
+use crate::parser::error::{ErrorKind::*, ErrorKind};
 use crate::to_mut_ptr;
 use crate::token::*;
 
-#[derive(Debug)]
 pub struct Parser {
     pub buf: ParserBuffer,
     pub ast: Program,
@@ -27,13 +26,21 @@ impl Parser {
         self.find_scope().body.push(node)
     }
 
+    pub fn error(&mut self, errkind: ErrorKind) {
+        self.err.add_error(
+            Error::new(
+                errkind, error::ErrorLevel::Error, self.buf.line, self.buf.file)
+        )
+    }
+
     pub fn expect_semicolon(&mut self) {
         match self.buf.next().unwrap().kind {
             TokenKind::SemiColon => (),
             _ => {
                 self.err.add_error(
                     Error::new(
-                        MissingSemiColon {
+                        ExpectsButFound {
+                            expect: TokenKind::SemiColon,
                             found: self.buf.current().unwrap().kind
                         },
                         error::ErrorLevel::Error,

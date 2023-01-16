@@ -55,14 +55,7 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
                         };
 
                         if !p.is_at_root() {
-                            p.err.add_error(
-                                Error::new(
-                                    ErrorKind::UnexpectedNodeType { found: node },
-                                    ErrorLevel::Error,
-                                    p.buf.line,
-                                    p.buf.file
-                                )
-                            );
+                            p.error(ErrorKind::UnexpectedNodeType { found: node });
                         } else {
                             p.add_node(node);
                         }
@@ -163,7 +156,13 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
                         ))
                     },
                     "return" => {
-                        let expr = parse_expr_from_parser(&mut p, &vec![SemiColon]);
+                        let expr = match p.buf.buf.peek().unwrap().kind {
+                            SemiColon => {
+                                p.buf.advance();
+                                None
+                            },
+                            _ => Some(parse_expr_from_parser(&mut p, &vec![SemiColon]))
+                        };
                         p.add_node(
                             Node::Return(expr)
                         )
@@ -209,41 +208,18 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
             }
             RCurlyBracket => {
                 if p.is_at_root() {
-                    p.err.add_error(
-                        Error::new(
-                            ErrorKind::UnexpectedToken { found: t.kind },
-                            ErrorLevel::Error,
-                            p.buf.line,
-                            p.buf.file
-                        )
-                    )
+                    p.error(ErrorKind::UnexpectedToken { found: t.kind })
                 } else {
                     p.find_scope().escaped = true
                 }
             },
             _ => {
-                p.err.add_error(
-                    Error::new(
-                        ErrorKind::UnexpectedToken {
-                            found: t.kind
-                        },
-                        ErrorLevel::Error,
-                        p.buf.line,
-                        p.buf.file
-                    )
-                )
+                p.error(ErrorKind::UnexpectedToken { found: t.kind })
             },
         }
     }
     if !p.is_at_root() {
-        p.err.add_error(
-            Error::new(
-                ErrorKind::UnclosedBracket,
-                ErrorLevel::Error,
-            p.buf.line,
-            p.buf.file
-            )
-        )
+        p.error(ErrorKind::UnclosedBracket)
     }
     p
 }
@@ -263,14 +239,7 @@ fn parse_type(toks: &mut Buffer<Token>, p: &mut Parser) -> Type{
     let mut tmp: Type = Type::Name(match toks.data[0].kind {
         Name => toks.data[0].str.clone(),
         _ => {
-            p.err.add_error(
-                Error::new(
-                    ErrorKind::UnexpectedToken { found: toks.data[0].clone().kind },
-                    ErrorLevel::Error,
-                    p.buf.line,
-                    p.buf.file
-                )
-            );
+            p.error(ErrorKind::UnexpectedToken { found: toks.data[0].clone().kind });
             "u8".to_string()
         }
     });
@@ -281,13 +250,16 @@ fn parse_type(toks: &mut Buffer<Token>, p: &mut Parser) -> Type{
             RBracket      => {
                 let size = match toks.next().unwrap().kind {
                     Number(v) => v,
-                    _ => panic!()
+                    _ => {
+                        p.error(ErrorKind::ExpectsButFound { expect: Number(0), found: toks.current().unwrap().kind } );
+                        0
+                    }
                 };
                 toks.next();
                 tmp = Type::Array(Box::new(tmp), size as usize)
             },
             Name => (),
-            _ => panic!("Bruh {:?}", tok)
+            _ => p.error(ErrorKind::UnexpectedToken { found: tok.kind })
         }
     }
     tmp
@@ -426,7 +398,10 @@ fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
                     _ => panic!()
                 })
             },
-            _ => panic!()
+            _ => {
+                p.error(ErrorKind::MathError);
+                ExprTmp::Number(0)
+            }
         }
     }
     fn is_math(a: TokenKind) -> bool {
@@ -464,7 +439,7 @@ fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
                     output.push(v)
                 }
             },
-            _ => panic!("Bruh {:?}", a),
+            _ => p.error(ErrorKind::UnexpectedToken { found: a.kind }),
         }
         prev = Some(_a);
     }
@@ -479,36 +454,54 @@ fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
             ExprTmp::BoolOp(op) => {
                 let last_2 = match tmp1.pop().unwrap() {
                     ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
-                    _ => panic!()
+                    _ => {
+                        p.error(ErrorKind::MathError);
+                        Expr::Number(0)
+                    }
                 };
                 let last_1 = match tmp1.pop().unwrap() {
                     ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
-                    _ => panic!()
+                    _ => {
+                        p.error(ErrorKind::MathError);
+                        Expr::Number(0)
+                    }
                 };
                 tmp1.push(ExprTmp::Expr(Expr::BoolOp { left: Box::new(last_1), oper: op, right: Box::new(last_2) }))
             },
             ExprTmp::UnaryOp(op) => {
                 let last = match tmp1.pop().unwrap() {
                     ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
-                    _ => panic!()
+                    _ => {
+                        p.error(ErrorKind::MathError);
+                        Expr::Number(0)
+                    }
                 };
                 tmp1.push(ExprTmp::Expr(Expr::UnaryOp { oper: op, val: Box::new(last) }))
             },
             ExprTmp::CompOp(op) => {
                 let last_2 = match tmp1.pop().unwrap() {
                     ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
-                    _ => panic!()
+                    _ => {
+                        p.error(ErrorKind::MathError);
+                        Expr::Number(0)
+                    }
                 };
                 let last_1 = match tmp1.pop().unwrap() {
                     ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
-                    _ => panic!()
+                    _ => {
+                        p.error(ErrorKind::MathError);
+                        Expr::Number(0)
+                    }
                 };
                 tmp1.push(ExprTmp::Expr(Expr::CompOp { left: Box::new(last_1), oper: op, right: Box::new(last_2) }))
             },
             ExprTmp::Cast(typ) => {
                 let val = match tmp1.pop().unwrap() {
                     ExprTmp::Number(v) => Expr::Number(v), ExprTmp::Ident(v) => Expr::Ident(v), ExprTmp::Expr(v) => v,
-                    _ => panic!()
+                    _ => {
+                        p.error(ErrorKind::MathError);
+                        Expr::Number(0)
+                    }
                 };
                 tmp1.push(ExprTmp::Expr(Expr::Cast { typ, val: Box::new(val) }))
             }
@@ -516,12 +509,18 @@ fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
         }
     }
 
-    if tmp1.len() != 1 {panic!("Bruh {:?}", tmp1)}
+    if tmp1.len() != 1 {
+        p.error(ErrorKind::MathError);
+        return Expr::Number(0)
+    }
 
     match &tmp1[0] {
         ExprTmp::Number(v) => Expr::Number(*v),
         ExprTmp::Ident(v)  => Expr::Ident(v.clone()),
         ExprTmp::Expr(v)   => v.clone(),
-        _ => panic!()
+        _ => {
+            p.error(ErrorKind::MathError);
+            Expr::Number(0)
+        }
     }
 }

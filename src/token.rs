@@ -18,15 +18,15 @@ impl std::fmt::Display for TokenKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use self::TokenKind::*;
         write!(f, "{}", match self {
-            Keyword => "Keyword", Name => "Name", Number(_) => "Number",
-            LF(_, _) => "Line feed",
-            Comma => "Comma", Colon => "Colon", SemiColon => "Semicolon", EqualSign => "Equal sign", MathSymbol => "Math symbol",
-            Logic => "Comparason", To => "To", Ampersand => "Ampersand", Star => "Star", Macro => "Macro", RightArrow => "Right arrow",
-            LCurlyBracket => "Left curly bracket", RCurlyBracket => "Right curly bracket",
-            LBracket => "Left bracket", RBracket => "Right bracket",
-            LParenthesis => "Left parenthesis", RParenthesis => "Right parenthesis",
-            Char(_) => "Character", Str(_) => "String",
-            Unknown => "Unknown"
+            Keyword => "keyword", Name => "name", Number(_) => "number",
+            LF(_, _) => "line feed",
+            Comma => "comma", Colon => "colon", SemiColon => "semicolon", EqualSign => "equal sign", MathSymbol => "math symbol",
+            Logic => "comparason", To => "to", Ampersand => "ampersand", Star => "star", Macro => "macro", RightArrow => "right arrow",
+            LCurlyBracket => "left curly bracket", RCurlyBracket => "right curly bracket",
+            LBracket => "left bracket", RBracket => "right bracket",
+            LParenthesis => "left parenthesis", RParenthesis => "right parenthesis",
+            Char(_) => "character", Str(_) => "string",
+            Unknown => "unknown"
         })
     }
 }
