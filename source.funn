@@ -1,12 +1,15 @@
-func extern abc() void;
-
 func main() u8 {
-    var c u8 = 10;
-    while (c) {
-        c = c - 1;
-    }
-}
+    // a comment
 
-func _start() void {
-    main();
-}
+
+
+    /*
+    this
+    is
+    multiline
+    */
+
+
+
+
+    asm "whoops"}

@@ -6,7 +6,8 @@ use crate::token::*;
 pub struct Scanner {
     pub buf: Buffer<char>,
     pub toks: Vec<Token>,
-    pub start: usize
+    pub start: usize,
+    pub at_line: usize
 }
 
 impl Scanner {
@@ -14,7 +15,8 @@ impl Scanner {
         Self {
             buf     : Buffer::new(src),
             toks    : Vec::new(),
-            start   : usize::MAX
+            start   : usize::MAX,
+            at_line : 1
         }
     }
     #[inline]
@@ -50,6 +52,9 @@ impl Iterator for Scanner {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
+        if self.buf.peek() == Some('\n') {
+            self.at_line += 1;
+        }
         self.buf.next()
     }
 }

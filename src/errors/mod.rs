@@ -37,16 +37,18 @@ impl ErrorHandler {
 
         use std::fmt::Write;
         for el in self.errors.iter() {
+            let lnlen = format!("{}", el.at_line).len();
             writeln!(&mut tmp, "{} {}:", el.lvl, el.err).unwrap();
-            writeln!(&mut tmp, "\x1b[0;36m      = {}\x1b[0m",
+            writeln!(&mut tmp, "\x1b[0;36m{}= {}\x1b[0m",
+                " ".repeat(4+lnlen),
                 filenames[el.at_file]
             ).unwrap();
-            writeln!(&mut tmp, "\x1b[0;36m{}{} |\x1b[0;0m  {}",
-                " ".repeat(5 - format!("{}", el.at_line).len().min(4)),
+            writeln!(&mut tmp, "\x1b[0;36m   {} |\x1b[0;0m  {}",
                 el.at_line.min(lines[el.at_file].len()-1) + 1,
                 lines[el.at_file][el.at_line.min(lines[el.at_file].len()-1)].trim()
             ).unwrap();
-            writeln!(&mut tmp, "\x1b[0;36m      |\x1b[0;33m  {}\x1b[0;0m\n",
+            writeln!(&mut tmp, "\x1b[0;36m{}|\x1b[0;33m  {}\x1b[0;0m\n",
+                " ".repeat(4+lnlen),
                 "^".repeat(lines[el.at_file][el.at_line.min(lines[el.at_file].len()-1)].trim().len())
             ).unwrap();
         }
