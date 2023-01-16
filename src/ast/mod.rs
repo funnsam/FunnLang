@@ -3,7 +3,7 @@ pub mod nodes;
 use core::panic;
 use std::vec;
 
-use crate::errors::{*, error::*};
+use crate::errors::error::*;
 use crate::parser::*;
 use crate::buffer::*;
 use crate::token::{*, TokenKind::*};
@@ -18,10 +18,26 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
             Keyword => {
                 match t.str.to_lowercase().as_str() {
                     "func" => {
-                        let name = p.buf.next().unwrap();    // TODO error checking
-                        if name.kind != Name {todo!()}
+                        let mut is_extern = false;
+                        let a = p.buf.buf.peek().unwrap();
+                        match a.kind {
+                            Keyword => {
+                                let a = p.buf.next().unwrap();
+                                if a.str != "extern" {
+                                    p.error(ErrorKind::UnexpectedToken { found: a.kind })
+                                } else {
+                                    is_extern = true
+                                }
+                            },
+                            Name => (),
+                            _ => p.error(ErrorKind::UnexpectedToken { found: a.kind })
+                        }
+
+                        let name = p.buf.next().unwrap();
+                        if name.kind != Name { p.error(ErrorKind::UnexpectedToken { found: name.kind }) }
+
                         p.buf.advance();
-                        
+
                         let mut raw_args: Vec<Vec<Token>> = Vec::new();
                         let mut tmp: Vec<Token> = Vec::with_capacity(2);
                         while let Some(t) = p.buf.next() {
@@ -39,19 +55,33 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
 
                         let mut func_args = Vec::new();
                         for el in raw_args.iter_mut() {
-                            let name = el[0].str.clone(); el.remove(0);
+                            let name = match is_extern {
+                                true  => "".to_string(),
+                                false => {
+                                    let a = el[0].str.clone();
+                                    el.remove(0);
+                                    a
+                                }
+                            }; 
                             let typ  = parse_type(&mut Buffer::new(el.to_vec()), &mut p);
                             func_args.push(FuncDefArg{name, typ})
                         }
 
-                        let func_body = Program { body: Vec::new(), escaped: false };
-                        let func_type = parse_type_from_parser(&mut p, &vec![LCurlyBracket]);
+                        let func_body = Program { body: Vec::new(), escaped: is_extern };
+
+                        let stop_tok = match is_extern {
+                            true  => vec![SemiColon],
+                            false => vec![LCurlyBracket]
+                        };
+                        
+                        let func_type = parse_type_from_parser(&mut p, &stop_tok);
 
                         let node = Node::FuncDefine {
                             func_name: name.str,
                             func_args,
                             func_type,
-                            func_body: func_body.clone(),
+                            func_body,
+                            is_extern
                         };
 
                         if !p.is_at_root() {
@@ -167,7 +197,9 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
                             Node::Return(expr)
                         )
                     },
-                    _ => todo!()
+                    _ => {
+                        p.error(ErrorKind::UnexpectedToken { found: t.kind })
+                    }
                 }
             },
             Name => {

@@ -42,7 +42,7 @@ impl ErrorHandler {
                 filenames[el.at_file]
             ).unwrap();
             writeln!(&mut tmp, "\x1b[0;36m{}{} |\x1b[0;0m  {}",
-                " ".repeat(4 - format!("{}", el.at_line).len().min(0)),
+                " ".repeat(5 - format!("{}", el.at_line).len().min(4)),
                 el.at_line.min(lines[el.at_file].len()-1) + 1,
                 lines[el.at_file][el.at_line.min(lines[el.at_file].len()-1)].trim()
             ).unwrap();

@@ -10,14 +10,13 @@ pub enum ErrorKind {
     UnexpectedNodeType {
         found: Node
     },
-    MainNotFound,
     UnexpectedToken {
         found: TokenKind
     },
     MathError,
 }
 
-
+#[allow(dead_code)]
 pub enum ErrorLevel {
     Error, Warning, Info
 }
@@ -32,8 +31,6 @@ impl std::fmt::Display for ErrorKind {
                 => write!(f, "unclosed bracket"),
             UnexpectedNodeType { found }
                 => write!(f, "unexpected {}", found),
-            MainNotFound
-                => write!(f, "cannot find main function"),
             UnexpectedToken { found }
                 => write!(f, "unexpected token {}", found),
             MathError

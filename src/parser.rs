@@ -89,7 +89,7 @@ fn find_scope_from_program(p: &Program) -> Option<&Program> {
     let mut scope: Option<&Program> = None;
     'find_scope_loop: for el in p.body.iter().rev() {
         match el {
-            Node::FuncDefine { func_name: _, func_args: _, func_type: _, func_body } => {
+            Node::FuncDefine { func_name: _, func_args: _, func_type: _, func_body, is_extern: _ } => {
                 if func_body.escaped {continue;}
                 scope = Some(&func_body);
                 break;

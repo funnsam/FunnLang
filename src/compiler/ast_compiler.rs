@@ -18,18 +18,35 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
     let mut vars = variables.clone();
     for statement in prog.body {
         match statement {
-            Node::FuncDefine { func_name, func_args, func_type, func_body } => {
-                let func = builder.new_function(&func_name, 
-                    &(funnlang_arg_to_ir_arg(func_args)
-                        .iter()
-                        .map(|(a, n)| (a.as_str(), n.clone())).collect::<Vec<(&str, IRType)>>()), 
-                    &func_type.to_ir_type());
-                builder.switch_to_function(func);
-                functions.insert(func_name, func);
-                let b = builder.push_block().unwrap();
-                builder.switch_to_block(b);
-                compile(func_body, builder, functions, &vars);
-                builder.set_terminator(Terminator::ReturnVoid);
+            Node::FuncDefine { func_name, func_args, func_type, func_body, is_extern } => {
+                match is_extern {
+                    true => {
+                        let func = builder.new_function(&func_name,
+                            &(funnlang_arg_to_ir_arg(func_args)
+                                .iter()
+                                .map(|(a, n)| (a.as_str(), n.clone())).collect::<Vec<(&str, IRType)>>()), 
+                            &func_type.to_ir_type());
+                        builder.switch_to_function(func);
+                        functions.insert(func_name, func);
+                        let b = builder.push_block().unwrap();
+                        builder.switch_to_block(b);
+                        compile(func_body, builder, functions, &vars);
+                        builder.set_terminator(Terminator::ReturnVoid);
+                    },
+                    false => {
+                        let func = builder.new_function(&func_name, 
+                            &(funnlang_arg_to_ir_arg(func_args)
+                                .iter()
+                                .map(|(a, n)| (a.as_str(), n.clone())).collect::<Vec<(&str, IRType)>>()), 
+                            &func_type.to_ir_type());
+                        builder.switch_to_function(func);
+                        functions.insert(func_name, func);
+                        let b = builder.push_block().unwrap();
+                        builder.switch_to_block(b);
+                        compile(func_body, builder, functions, &vars);
+                        builder.set_terminator(Terminator::ReturnVoid);
+                    }
+                }
             },
             Node::VarDefine { var_type, var_name, val_expr } => {
                 let var = builder.push_variable(&var_name, &var_type.clone().to_ir_type()).unwrap();
@@ -53,6 +70,13 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
             Node::VarAssign { var_name, val_expr } => {
                 let val = compile_expr(val_expr, builder, functions, &vars, &IRType::Integer(true, 32));
                 builder.push_instruction(&IRType::Void, Operation::SetVar(vars[&var_name], val));
+            },
+            Node::FuncCall { func_name, func_args } => {
+                let mut args = Vec::new();
+                for el in func_args {
+                    args.push(compile_expr(el, builder, functions, variables, &IRType::Void))
+                }
+                builder.push_instruction(&IRType::Void, Operation::Call(functions[&func_name], args));
             },
             _ => todo!(),
         }

@@ -1,4 +1,4 @@
-@import "*io"
+func extern abc() void;
 
 func main() u8 {
     var c u8 = 10;
@@ -7,13 +7,6 @@ func main() u8 {
     }
 }
 
-// comment dont aaa
-
-
-
-/*
-multiline comment
-
-
-owo
-*/
+func _start() void {
+    main();
+}

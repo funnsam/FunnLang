@@ -21,7 +21,8 @@ pub enum Node {
         func_name: String,
         func_args: Vec<FuncDefArg>,
         func_type: Type,
-        func_body: Program
+        func_body: Program,
+        is_extern: bool
     },
     FuncCall {
         func_name: String,
@@ -82,7 +83,7 @@ impl Type {
                     _ => todo!("Unimplimented type.")
                 }
             },
-            Type::Pointer(t) => {
+            Type::Pointer(_t) => {
                 // IRType::Pointer(t)
                 IRType::Void
             },
@@ -147,7 +148,7 @@ impl std::fmt::Display for Node {
                 => write!(f, "variable definition"),
             VarAssign { var_name: _, val_expr: _ }
                 => write!(f, "set variable"),
-            FuncDefine { func_name: _, func_args: _, func_type: _, func_body: _ }
+            FuncDefine { func_name: _, func_args: _, func_type: _, func_body: _, is_extern: _ }
                 => write!(f, "function definition"),
             FuncCall { func_name: _, func_args: _ }
                 => write!(f, "function call"),
