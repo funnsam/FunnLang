@@ -144,6 +144,7 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
                     "if" => {
                         p.buf.advance();
                         let expr = parse_expr_from_parser(&mut p, &vec![RParenthesis]);
+                        p.buf.advance();
                         p.add_node(
                             Node::Branch {
                                 cond: vec![expr],
@@ -157,6 +158,7 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
                             "if" => {
                                 p.buf.advance();
                                 let expr = parse_expr_from_parser(&mut p, &vec![RParenthesis]);
+                                p.buf.advance();
                                 match p.find_branch_block() {
                                     Node::Branch { cond, body } => {
                                         cond.push(expr);

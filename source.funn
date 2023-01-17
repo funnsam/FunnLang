@@ -1,15 +1,10 @@
 func main() u8 {
-    // a comment
+    if (1) {
+        a();
+    } else if (2) {
+        b();
+    } else {
+        c();
+    }
+}
 
-
-
-    /*
-    this
-    is
-    multiline
-    */
-
-
-
-
-    asm "whoops"}
