@@ -18,7 +18,7 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
             Keyword => {
                 match t.str.to_lowercase().as_str() {
                     "func" => {
-                        let mut is_extern = false;
+                        let mut linkage = InternLinkage::Public;
                         let a = p.buf.buf.peek().unwrap();
                         match a.kind {
                             Keyword => {
@@ -26,7 +26,7 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
                                 if a.str != "extern" {
                                     p.error(ErrorKind::UnexpectedToken { found: a.kind })
                                 } else {
-                                    is_extern = true
+                                    linkage = InternLinkage::Extern
                                 }
                             },
                             Name => (),
@@ -55,9 +55,9 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
 
                         let mut func_args = Vec::new();
                         for el in raw_args.iter_mut() {
-                            let name = match is_extern {
-                                true  => "".to_string(),
-                                false => {
+                            let name = match linkage {
+                                InternLinkage::Extern => "".to_string(),
+                                _ => {
                                     let a = el[0].str.clone();
                                     el.remove(0);
                                     a
@@ -67,13 +67,12 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
                             func_args.push(FuncDefArg{name, typ})
                         }
 
-                        let func_body = Program { body: Vec::new(), escaped: is_extern };
+                        let func_body = Program { body: Vec::new(), escaped: linkage == InternLinkage::Extern };
 
-                        let stop_tok = match is_extern {
-                            true  => vec![SemiColon],
-                            false => vec![LCurlyBracket]
+                        let stop_tok = match linkage {
+                            InternLinkage::Extern => vec![SemiColon],
+                            _ => vec![LCurlyBracket]
                         };
-                        
                         let func_type = parse_type_from_parser(&mut p, &stop_tok);
 
                         let node = Node::FuncDefine {
@@ -81,7 +80,7 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
                             func_args,
                             func_type,
                             func_body,
-                            is_extern
+                            linkage
                         };
 
                         if !p.is_at_root() {
@@ -350,7 +349,7 @@ fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
     }
     fn as_expr_tmp(el: Token, is_unary: bool, iter: &mut Buffer<Token>, p: &mut Parser) -> ExprTmp {
         match el.kind {
-            Number(v) => ExprTmp::Number(v),
+            Number(v) => ExprTmp::Number(v), Char(v) => ExprTmp::Number(v as i64),
             Name => {
                 match iter.peek().unwrap_or(Token { kind: LF(0, 0), str: "\n".to_string() }).kind {
                     LParenthesis => {
@@ -452,7 +451,7 @@ fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
     while let Some(a) = toks.next() {
         let _a = a.kind.clone();
         match a.kind {
-            Number(v) => output.push(ExprTmp::Number(v)),
+            Number(v) => output.push(ExprTmp::Number(v)), Char(v) => output.push(ExprTmp::Number(v as i64)),
             Name => output.push(as_expr_tmp(a, false, toks, p)),
             MathSymbol | Star | Ampersand | Logic | RightArrow => {
                 let is_unary = is_math(prev.unwrap_or(MathSymbol));

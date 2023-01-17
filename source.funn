@@ -1,10 +1,5 @@
-func main() u8 {
-    if (1) {
-        a();
-    } else if (2) {
-        b();
-    } else {
-        c();
-    }
-}
+@import "*io"
 
+func main() void {
+	out_char('H');
+}

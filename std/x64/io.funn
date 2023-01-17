@@ -1,15 +1,9 @@
-func out_char(ch u8) void {
+func extern putchar(int) int;
 
+func out_char(ch u8) void {
+	putchar(ch -> int);
 }
 
 func println(str &u8) void {
-
-}
-
-func println_u(num uint) void {
-
-}
-
-func println_i(num int) void {
 
 }

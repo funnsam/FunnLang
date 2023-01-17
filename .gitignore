@@ -1,7 +1,7 @@
 target/
 Cargo.lock
-funnlang.exe
 funnlang
 *.out
 *.s
 *.urcl
+*.exe
