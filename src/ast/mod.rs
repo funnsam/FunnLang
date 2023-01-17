@@ -347,7 +347,7 @@ fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
     }
     fn as_expr_tmp(el: Token, is_unary: bool, iter: &mut Buffer<Token>, p: &mut Parser) -> ExprTmp {
         match el.kind {
-            Number(v) => ExprTmp::Number(v),
+            Number(v) => ExprTmp::Number(v), Char(v) => ExprTmp::Number(v as i64),
             Name => {
                 match iter.peek().unwrap_or(Token { kind: LF(0, 0), str: "\n".to_string() }).kind {
                     LParenthesis => {
@@ -449,7 +449,7 @@ fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
     while let Some(a) = toks.next() {
         let _a = a.kind.clone();
         match a.kind {
-            Number(v) => output.push(ExprTmp::Number(v)),
+            Number(v) => output.push(ExprTmp::Number(v)), Char(v) => output.push(ExprTmp::Number(v as i64)),
             Name => output.push(as_expr_tmp(a, false, toks, p)),
             MathSymbol | Star | Ampersand | Logic | RightArrow => {
                 let is_unary = is_math(prev.unwrap_or(MathSymbol));

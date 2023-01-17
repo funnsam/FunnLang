@@ -38,8 +38,8 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
                 
                 let args = builder.get_function_args(func).unwrap();
                 
-                for (i, _) in args.iter().enumerate() {
-                    vars.insert(func_args[i].name.clone(), builder.push_variable(&func_args[i].name, &func_args[i].typ.clone().to_ir_type()).unwrap());
+                for (i, v) in args.iter().enumerate() {
+                    vars.insert(func_args[i].name.clone(), *v);
                 }
 
                 compile(func_body, builder, functions, &vars);

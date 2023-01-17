@@ -1,4 +1,5 @@
 @import "*io"
 
 func main() void {
+	out_char('H');
 }
