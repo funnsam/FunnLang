@@ -1,8 +1,0 @@
-// Used to start runtime
-
-func _start() void {
-	// ELF files uses _start as a starting point
-
-	main();
-	while (1) {}
-}

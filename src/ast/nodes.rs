@@ -1,9 +1,25 @@
-use codegem::ir::Type as IRType;
+use codegem::ir::{Type as IRType, Linkage};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
     pub body: Vec<Node>,
     pub escaped: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum InternLinkage {
+    Public, Private,
+    Extern
+}
+
+impl InternLinkage {
+    pub fn to_ir_linkage(&self) -> Linkage {
+        match self {
+            Self::Public    => Linkage::Public,
+            Self::Private   => Linkage::Private,
+            Self::Extern    => Linkage::External
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -22,7 +38,7 @@ pub enum Node {
         func_args: Vec<FuncDefArg>,
         func_type: Type,
         func_body: Program,
-        is_extern: bool
+        linkage  : InternLinkage
     },
     FuncCall {
         func_name: String,
@@ -148,7 +164,7 @@ impl std::fmt::Display for Node {
                 => write!(f, "variable definition"),
             VarAssign { var_name: _, val_expr: _ }
                 => write!(f, "set variable"),
-            FuncDefine { func_name: _, func_args: _, func_type: _, func_body: _, is_extern: _ }
+            FuncDefine { func_name: _, func_args: _, func_type: _, func_body: _, linkage: _ }
                 => write!(f, "function definition"),
             FuncCall { func_name: _, func_args: _ }
                 => write!(f, "function call"),

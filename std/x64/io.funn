@@ -1,5 +1,7 @@
-func out_char(ch u8) void {
+func extern put_char(int) int;
 
+func out_char(ch u8) void {
+	put_char(ch -> int);
 }
 
 func println(str &u8) void {

@@ -1,15 +1,4 @@
-func main() u8 {
-    // a comment
+@import "*io"
 
-
-
-    /*
-    this
-    is
-    multiline
-    */
-
-
-
-
-    asm "whoops"}
+func main() void {
+}
