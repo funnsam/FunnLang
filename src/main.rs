@@ -23,6 +23,8 @@ use lexer::*;
 use preprocess::*;
 use ast::*;
 
+use crate::compiler::aarch64::AA64Selector;
+
 use clap::Parser;
 
 #[derive(Parser)]
@@ -40,6 +42,7 @@ struct Args {
 pub enum CompilerTarget {
     URCL,
     RV64,
+    AA64,
     X64,
 }
 
@@ -52,6 +55,9 @@ impl CompilerTarget {
             }
             "rv64" | "riscv" => {
                 Some(RV64)
+            }
+            "aa64" | "arm" | "aarch64" => {
+                Some(AA64)
             }
             "x86" | "x86_64" | "x64" => {
                 Some(X64)
@@ -66,6 +72,7 @@ impl CompilerTarget {
         match self {
             URCL => "urcl",
             RV64 => "rv64",
+            AA64 => "aa64",
             X64  => "x64"
         }
     }
@@ -106,6 +113,10 @@ fn main() {
         },
         RV64 => {
             let mut vcode = ir.lower_to_vcode::<_, RvSelector>();
+            asm_gen(&mut vcode, &mut file)
+        },
+        AA64 => {
+            let mut vcode = ir.lower_to_vcode::<_, AA64Selector>();
             asm_gen(&mut vcode, &mut file)
         },
         X64  => {
