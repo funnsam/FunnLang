@@ -1,5 +1,11 @@
 @import "*io"
 
 func main() void {
-	out_char('H');
+    var a u8 = 'H';
+
+    {
+        a = 'e';
+    }
+
+	out_char(a);
 }

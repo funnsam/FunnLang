@@ -70,9 +70,12 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
             Node::FuncCall { func_name, func_args } => {
                 let mut args = Vec::new();
                 for el in func_args {
-                    args.push(compile_expr(el, builder, functions, variables, &IRType::Void))
+                    args.push(compile_expr(el, builder, functions, &vars, &IRType::Void))
                 }
                 builder.push_instruction(Operation::Call(functions[&func_name], args));
+            },
+            Node::CodeBlock(block) => {
+                compile(block, builder, functions, &vars);
             },
             _ => todo!(),
         }

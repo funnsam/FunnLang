@@ -110,7 +110,12 @@ fn find_scope_from_program(p: &Program) -> Option<&Program> {
                     scope = Some(el);
                     break 'find_scope_loop;
                 };
-            }
+            },
+            Node::CodeBlock(c) => {
+                if c.escaped {continue;}
+                scope = Some(c);
+                break;
+            },
             _ => (),
         }
     };
