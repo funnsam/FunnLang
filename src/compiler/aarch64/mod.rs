@@ -94,7 +94,7 @@ pub enum Aa64Instruction {
         imm: i16,
     },
 
-    Jal {
+    Bl {
         rd: VReg,
         location: Location,
         clobbers: Vec<VReg>,
@@ -131,7 +131,7 @@ impl Display for Aa64Instruction {
             Aa64Instruction::AluOp { op, rd, rx, ry } => write!(f, "{} {}, {}, {}", op, rd, rx, ry),
             Aa64Instruction::AluOpImm { op, rd, rx, imm } => write!(f, "{} {}, {}, {}", op, rd, rx, imm),
 
-            Aa64Instruction::Jal { rd, location, .. } => write!(f, "jal {}, {}", rd, location),
+            Aa64Instruction::Bl { rd, location, .. } => write!(f, "jal {}, {}", rd, location),
 
             Aa64Instruction::Bne { rx, ry, location } => {
                 write!(f, "bne {}, {}, {}", rx, ry, location)
@@ -218,7 +218,7 @@ impl Instr for Aa64Instruction {
                 alloc.add_use(*rx);
             }
 
-            Aa64Instruction::Jal { clobbers, .. } => {
+            Aa64Instruction::Bl { clobbers, .. } => {
                 for (clobber, arg) in clobbers.iter().zip(Aa64Instruction::get_arg_regs().into_iter()) {
                     alloc.add_use(*clobber);
                     alloc.force_same(*clobber, arg);
@@ -269,7 +269,7 @@ impl Instr for Aa64Instruction {
                 }
             }
 
-            Aa64Instruction::Jal { rd, .. } => {
+            Aa64Instruction::Bl { rd, .. } => {
                 if let Some(new) = alloc.get(rd) {
                     *rd = *new;
                 }
@@ -341,7 +341,7 @@ impl Instr for Aa64Instruction {
                             }
                         }
 
-                        Aa64Instruction::Jal { .. } => (),
+                        Aa64Instruction::Bl { .. } => (),
 
                         Aa64Instruction::Bne { rx, ry, .. } => {
                             if let VReg::Spilled(spill) = *rx {
@@ -445,13 +445,13 @@ fn write_instruction(file: &mut impl Write, vcode: &VCode<Aa64Instruction>, func
             writeln!(file, "    {} {}, {}, {}", op, register(*rd), register(*rx), imm)?;
         }
 
-        Aa64Instruction::Jal { rd, location, .. } => {
+        Aa64Instruction::Bl { rd, location, .. } => {
             match *location {
                 Location::InternalLabel(_) => {
-                    writeln!(file, "    jal {}, .{}{}", register(*rd), func.name, location)?;
+                    writeln!(file, "    bl .{}{}", func.name, location)?;
                 }
                 Location::Function(f) => {
-                    writeln!(file, "    jal {}, {}", register(*rd), vcode.functions[f].name)?;
+                    writeln!(file, "    bl {}", vcode.functions[f].name)?;
                 }
             }
         }
@@ -854,7 +854,7 @@ impl InstructionSelector for AA64Selector {
 
                         clobber
                     }).collect();
-                    gen.push_instruction(Aa64Instruction::Jal {
+                    gen.push_instruction(Aa64Instruction::Bl {
                         rd: VReg::RealRegister(AA64_REGISTER_LR),
                         location: Location::Function(f),
                         clobbers,
@@ -918,7 +918,7 @@ impl InstructionSelector for AA64Selector {
 
             Terminator::Jump(label) => {
                 if let Some(&label) = gen.label_map().get(&label) {
-                    gen.push_instruction(Aa64Instruction::Jal {
+                    gen.push_instruction(Aa64Instruction::Bl {
                         rd: VReg::RealRegister(AA64_REGISTER_ZERO),
                         location: Location::InternalLabel(label),
                         clobbers: Vec::new(),
@@ -936,7 +936,7 @@ impl InstructionSelector for AA64Selector {
                     });
                 }
                 if let Some(&l2) = gen.label_map().get(&l2) {
-                    gen.push_instruction(Aa64Instruction::Jal {
+                    gen.push_instruction(Aa64Instruction::Bl {
                         rd: VReg::RealRegister(AA64_REGISTER_ZERO),
                         location: Location::InternalLabel(l2),
                         clobbers: Vec::new(),
