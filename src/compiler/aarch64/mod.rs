@@ -576,7 +576,8 @@ impl InstructionSelector for AA64Selector {
             AA64_REGISTER_X26,
             AA64_REGISTER_X27,
             AA64_REGISTER_X28,
-            AA64_REGISTER_FP
+            AA64_REGISTER_FP,
+            AA64_REGISTER_ZERO
         ];
         gen.push_prelabel_instruction(Aa64Instruction::AluOpImm {
             op: Aa64AluOp::Add,
@@ -827,6 +828,7 @@ impl InstructionSelector for AA64Selector {
                     save_regs.push(VReg::RealRegister(AA64_REGISTER_X13));
                     save_regs.push(VReg::RealRegister(AA64_REGISTER_X14));
                     save_regs.push(VReg::RealRegister(AA64_REGISTER_X15));
+                    save_regs.push(VReg::RealRegister(AA64_REGISTER_ZERO));
                     gen.push_instruction(Aa64Instruction::AluOpImm {
                         op: Aa64AluOp::Add,
                         rd: VReg::RealRegister(AA64_REGISTER_SP),
