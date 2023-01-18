@@ -14,12 +14,11 @@ ifeq ($(OS), Windows_NT)
 endif
 
 build:
-	-cargo clean -p funnlang --release
 	cargo build -r
 	-rm $(TNAME) -f
-	-mv $(DNAME) .
+	-cp $(DNAME) .
 
 debug:
 	cargo build
 	-rm $(TNAME) -f
-	-mv $(DDNAME) .
+	-cp $(DDNAME) .
