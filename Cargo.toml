@@ -9,7 +9,7 @@ repository = "https://github.com/funnsam/funnlang"
 
 [dependencies]
 clap = { version = "4.1.1", features=["derive"] }
-codegem = "0.2.2"
+codegem = "0.2.3"
 
 [profile.release]
 lto = true

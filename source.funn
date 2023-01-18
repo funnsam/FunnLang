@@ -1,11 +1,11 @@
 @import "*std/?/io"
 
-func main() void {
-	out_char('H');
-	out_char('e');
-	out_char('l');
-	out_char('l');
-	out_char('o');
-	out_char('!');
-	out_char('\n');
+func pub main() void {
+	putchar('H');
+	putchar('e');
+	putchar('l');
+	putchar('l');
+	putchar('o');
+	putchar('!');
+	putchar('\n');
 }

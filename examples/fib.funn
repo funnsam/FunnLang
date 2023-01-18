@@ -1,6 +1,6 @@
 @import "*std/?/io"
 
-func main() u8 {
+func pub main() u8 {
     var a u16 = 1;
     var b u16 = 0;
     for (i: 0..10) {

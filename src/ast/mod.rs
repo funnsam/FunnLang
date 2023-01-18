@@ -18,15 +18,17 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
             Keyword => {
                 match t.str.to_lowercase().as_str() {
                     "func" => {
-                        let mut linkage = InternLinkage::Public;
+                        let mut linkage = InternLinkage::Private;
                         let a = p.buf.buf.peek().unwrap();
                         match a.kind {
                             Keyword => {
                                 let a = p.buf.next().unwrap();
-                                if a.str != "extern" {
-                                    p.error(ErrorKind::UnexpectedToken { found: a.kind })
-                                } else {
+                                if a.str == "extern" {
                                     linkage = InternLinkage::Extern
+                                } else if a.str == "pub" {
+                                    linkage = InternLinkage::Public
+                                } else {
+                                    p.error(ErrorKind::UnexpectedToken { found: a.kind })
                                 }
                             },
                             Name => (),

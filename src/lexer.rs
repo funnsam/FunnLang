@@ -12,7 +12,7 @@ pub fn lex(s: &mut Scanner, file: usize) -> Buffer<Token> {
                     "if"    | "else"    |
                     "var"   |
                     "for"   | "while"   | "break"   | "continue"    |
-                    "func"  | "extern"  | "return"  |
+                    "func"  | "extern"  | "pub"     | "return"      |
                     "asm" => s.create(Keyword),
                     
                     _   => s.create(Name)

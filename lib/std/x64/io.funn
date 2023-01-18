@@ -1,7 +1,7 @@
 func extern putchar(int) int;
 
 func out_char(ch u8) void {
-	putchar(ch -> int);
+	// putchar(ch -> int);
 }
 
 func println(str &u8) void {
