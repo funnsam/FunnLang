@@ -1,11 +1,11 @@
-@import "*io"
+@import "*std/?/io"
 
 func main() void {
-    var a u8 = 'H';
-
-    {
-        a = 'e';
-    }
-
-	out_char(a);
+	out_char('H');
+	out_char('e');
+	out_char('l');
+	out_char('l');
+	out_char('o');
+	out_char('!');
+	out_char('\n');
 }

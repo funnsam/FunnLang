@@ -16,22 +16,12 @@ pub fn preprocess(s: &mut Buffer<Token>, srcs: &mut Vec<String>, files: &mut Vec
                                 match &v[0..1] {
                                     "*" => {
                                         let mut a = exec_path();
-                                        match &v[1..2] {
-                                            "*" => {
-                                                a.push("std");
-                                                a.push("any");
-                                                a.push(v[2..v.len()].to_owned() + ".funn");
-                                            }
-                                            _ => {
-                                                a.push("std");
-                                                a.push(targ.to_str());
-                                                a.push(v[1..v.len()].to_owned() + ".funn");
-                                            }
-                                        }
+                                        a.push("lib");
+                                        a.push(v[1..v.len()].to_owned().replace("?", targ.to_str()) + ".funn");
                                         
                                         format!("{}", a.display())
                                     }
-                                    _ => v
+                                    _ => v.replace("?", targ.to_str()) + ".funn"
                                 }
                             },
                             _ => panic!()

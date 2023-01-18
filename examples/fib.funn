@@ -1,4 +1,4 @@
-@import "*io"
+@import "*std/?/io"
 
 func main() u8 {
     var a u16 = 1;
