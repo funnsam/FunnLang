@@ -445,7 +445,7 @@ fn write_instruction(file: &mut impl Write, vcode: &VCode<Aa64Instruction>, func
             writeln!(file, "    {} {}, {}, {}", op, register(*rd), register(*rx), imm)?;
         }
 
-        Aa64Instruction::Bl { rd, location, .. } => {
+        Aa64Instruction::Bl { rd: _, location, .. } => {
             match *location {
                 Location::InternalLabel(_) => {
                     writeln!(file, "    bl .{}{}", func.name, location)?;
