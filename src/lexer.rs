@@ -86,6 +86,8 @@ pub fn lex(s: &mut Scanner, file: usize) -> Buffer<Token> {
                     s.create(Logic)
                 } else if s._if(|c| c == '<') {
                     s.create(MathSymbol)
+                } else {
+                    s.create(Logic)
                 }
             },
             '>' => {
@@ -93,6 +95,8 @@ pub fn lex(s: &mut Scanner, file: usize) -> Buffer<Token> {
                     s.create(Logic)
                 } else if s._if(|c| c == '>') {
                     s.create(MathSymbol)
+                } else {
+                    s.create(Logic)
                 }
             },
             '\'' => {
