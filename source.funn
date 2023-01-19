@@ -2,20 +2,7 @@
 
 func pub main() void {
     putchar('H');
-    putchar('e');
-    putchar('l');
-    putchar('l');
-    putchar('o');
-    putchar(',');
-    putchar(' ');
-    putchar('W');
-    putchar('o');
-    putchar('r');
-    putchar('l');
-    while (1 <= 1) {
-        putchar('d');
-        putchar('!');
-        return;
-    }
+    putchar('i');
+    putchar('!');
     putchar('\n');
 }
