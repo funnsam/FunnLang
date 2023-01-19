@@ -87,6 +87,8 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
                         builder.set_terminator(Terminator::ReturnVoid).unwrap();
                     }
                 }
+                let a = builder.push_block().unwrap();
+                builder.switch_to_block(a);
             }
             _ => todo!(),
         }
