@@ -341,7 +341,7 @@ fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
                 match op {
                     Add | Sub => 1,
                     Mul | Div | Mod => 2,
-                    And | Or  | XOr => 3,
+                    And | Or  | XOr | LSh | RSh => 3,
                 }
             },
             ExprTmp::CompOp(_)  => 4,
@@ -384,7 +384,7 @@ fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
                         match el.str.as_str() {
                             "+" => BoolOp::Add, "-" => BoolOp::Sub, "*" => BoolOp::Mul, "/" => BoolOp::Div,
                             "%" => BoolOp::Mod,
-                            "&" => BoolOp::And, "|" => BoolOp::Or , "^" => BoolOp::XOr,
+                            "&" => BoolOp::And, "|" => BoolOp::Or , "^" => BoolOp::XOr, "<<" => BoolOp::LSh, ">>" => BoolOp::RSh,
                             _ => panic!("Bruh {:?}", el)
                         }
                     )

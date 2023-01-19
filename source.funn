@@ -1,8 +1,6 @@
 @import "*std/?/io"
 
 func pub main() void {
-    putchar('H');
-    putchar('i');
-    putchar('!');
+    putchar(' ' << 1);
     putchar('\n');
 }

@@ -140,6 +140,16 @@ fn compile_expr(expr: Expr, builder: &mut ModuleBuilder, functions: &mut HashMap
                     let right = compile_expr(*right, builder, functions, variables, typ);
                     builder.push_instruction(Operation::BitXor(left, right)).unwrap().unwrap()
                 }
+                BoolOp::LSh => {
+                    let left = compile_expr(*left, builder, functions, variables, typ);
+                    let right = compile_expr(*right, builder, functions, variables, typ);
+                    builder.push_instruction(Operation::Bsl(left, right)).unwrap().unwrap()
+                }
+                BoolOp::RSh => {
+                    let left = compile_expr(*left, builder, functions, variables, typ);
+                    let right = compile_expr(*right, builder, functions, variables, typ);
+                    builder.push_instruction(Operation::Bsr(left, right)).unwrap().unwrap()
+                }
             }
         }
         Expr::Ident(i) => {

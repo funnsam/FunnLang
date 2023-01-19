@@ -146,7 +146,7 @@ pub enum UnaryOp {
 #[derive(Debug, Clone, PartialEq)]
 pub enum BoolOp {
     Add, Sub, Mul, Div, Mod,
-    And, Or , XOr,
+    And, Or , XOr, LSh, RSh
 }
 
 #[derive(Debug, Clone, PartialEq)]
