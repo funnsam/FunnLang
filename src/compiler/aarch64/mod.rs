@@ -547,7 +547,7 @@ fn write_instruction(file: &mut impl Write, vcode: &VCode<AA64Instruction>, func
                 write_instruction(file, vcode, func, instruction)?;
             }
 
-            write!(file, "    ret")?;
+            writeln!(file, "    ret")?;
         }
 
         AA64Instruction::Load { rd, imm, rx } => {
