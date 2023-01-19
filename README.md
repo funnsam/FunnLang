@@ -6,6 +6,6 @@
 FunnLang is a low level language with a syntax like Go or Rust, and it supports targeting x86, RISC-V, URCL and AARCH-64.
 
 ## Code renderings
-uwu.
+All of these following images are rendered in [Carbon](https://carbon.vercel.app/).
 
 ![fib sequence](./resources/funnlang1.png)
