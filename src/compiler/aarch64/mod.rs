@@ -113,10 +113,6 @@ pub enum AA64Instruction {
         imm: i16,
     },
 
-    Jump {
-        location: Location
-    },
-
     Bl {
         rd: VReg,
         location: Location,
@@ -178,9 +174,7 @@ impl Display for AA64Instruction {
 
             AA64Instruction::Compare { rx, ry } => write!(f, "cmp {}, {}", rx, ry),
 
-            AA64Instruction::CondSet { rd, cnd } => write!(f, "cset {}, {}", rd, cnd),
-
-            AA64Instruction::Jump { location } => write!(f, "b {}", location)
+            AA64Instruction::CondSet { rd, cnd } => write!(f, "cset {}, {}", rd, cnd)
         }
     }
 }
@@ -257,8 +251,6 @@ impl Instr for AA64Instruction {
                 alloc.add_use(*rx);
             }
             
-            AA64Instruction::Jump { .. } => (),
-            
             AA64Instruction::Bl { clobbers, .. } => {
                 for (clobber, arg) in clobbers.iter().zip(AA64Instruction::get_arg_regs().into_iter()) {
                     alloc.add_use(*clobber);
@@ -316,8 +308,6 @@ impl Instr for AA64Instruction {
                     *rx = *new;
                 }
             }
-
-            AA64Instruction::Jump { .. } => (),
 
             AA64Instruction::Bl { rd, .. } => {
                 if let Some(new) = alloc.get(rd) {
@@ -405,8 +395,6 @@ impl Instr for AA64Instruction {
                                 *rd = VReg::RealRegister(AA64_REGISTER_IP0);
                             }
                         }
-
-                        AA64Instruction::Jump { .. } => (),
 
                         AA64Instruction::Bl { .. } => (),
 
@@ -528,17 +516,6 @@ fn write_instruction(file: &mut impl Write, vcode: &VCode<AA64Instruction>, func
 
         AA64Instruction::AluOpImm { op, rd, rx, imm } => {
             writeln!(file, "    {} {}, {}, {}", op, register(*rd), register(*rx), imm)?;
-        }
-
-        AA64Instruction::Jump { location } => {
-            match *location {
-                Location::InternalLabel(_) => {
-                    writeln!(file, "    b .{}{}", func.name, location)?;
-                }
-                Location::Function(f) => {
-                    writeln!(file, "    b {}", vcode.functions[f].name)?;
-                }
-            }
         }
 
         AA64Instruction::Bl { rd: _, location, .. } => {
@@ -963,8 +940,10 @@ impl InstructionSelector for AA64Selector {
 
             Terminator::Jump(label) => {
                 if let Some(&label) = gen.label_map().get(&label) {
-                    gen.push_instruction(AA64Instruction::Jump {
+                    gen.push_instruction(AA64Instruction::Bl {
+                        rd: VReg::RealRegister(AA64_REGISTER_ZERO),
                         location: Location::InternalLabel(label),
+                        clobbers: Vec::new(),
                     });
                 }
             }
@@ -979,8 +958,10 @@ impl InstructionSelector for AA64Selector {
                     });
                 }
                 if let Some(&l2) = gen.label_map().get(&l2) {
-                    gen.push_instruction(AA64Instruction::Jump {
-                        location: Location::InternalLabel(l2)
+                    gen.push_instruction(AA64Instruction::Bl {
+                        rd: VReg::RealRegister(AA64_REGISTER_ZERO),
+                        location: Location::InternalLabel(l2),
+                        clobbers: Vec::new(),
                     });
                 }
             }

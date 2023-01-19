@@ -77,6 +77,17 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
             Node::CodeBlock(block) => {
                 compile(block, builder, functions, &vars);
             },
+            Node::Return(retval) => {
+                match retval {
+                    Some(retval) => {
+                        let retval = compile_expr(retval, builder, functions, &vars, &IRType::Void);
+                        builder.set_terminator(Terminator::Return(retval)).unwrap();
+                    },
+                    None => {
+                        builder.set_terminator(Terminator::ReturnVoid).unwrap();
+                    }
+                }
+            }
             _ => todo!(),
         }
     }
