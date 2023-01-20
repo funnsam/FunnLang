@@ -858,7 +858,7 @@ impl InstructionSelector for AA64Selector {
                     rd: rt, rx, ry, size: AA64RegSizes::B64 
                 });
                 gen.push_instruction(AA64Instruction::MSub {
-                    rd1: rd, rd2: VReg::RealRegister(AA64_REGISTER_ZERO), rx: ry, ry: rx, size: AA64RegSizes::B64
+                    rd1: rd, rd2: rd, rx: ry, ry: rx, size: AA64RegSizes::B64
                 });
             }
 

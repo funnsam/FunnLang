@@ -1,5 +1,5 @@
 @import "*std/?/io"
 
 func pub main() void {
-    var a u8 = 1 + 2 + 3;
+    putchar('z' % 40);
 }
