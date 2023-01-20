@@ -114,6 +114,14 @@ pub enum AA64Instruction {
         size: AA64RegSizes
     },
 
+    MSub {
+        rd1: VReg,
+        rd2: VReg,
+        rx : VReg,
+        ry : VReg,
+        size: AA64RegSizes
+    },
+
     AluOp {
         op: AA64AluOp,
         rd: VReg,
@@ -239,6 +247,13 @@ impl Instr for AA64Instruction {
                 alloc.add_def(*rd);
             }
 
+            AA64Instruction::MSub { rd1, rd2, rx, ry, .. } => {
+                alloc.add_def(*rd1);
+                alloc.add_def(*rd2);
+                alloc.add_use(*rx);
+                alloc.add_use(*ry);
+            }
+
             AA64Instruction::AluOp { rd, rx, ry, .. } => {
                 alloc.add_def(*rd);
                 alloc.add_use(*rx);
@@ -284,6 +299,21 @@ impl Instr for AA64Instruction {
             AA64Instruction::Integer { rd, .. } => {
                 if let Some(new) = alloc.get(rd) {
                     *rd = *new;
+                }
+            }
+
+            AA64Instruction::MSub { rd1, rd2, rx, ry, .. } => {
+                if let Some(new) = alloc.get(rd1) {
+                    *rd1 = *new;
+                }
+                if let Some(new) = alloc.get(rd2) {
+                    *rd2 = *new;
+                }
+                if let Some(new) = alloc.get(rx) {
+                    *rx = *new;
+                }
+                if let Some(new) = alloc.get(ry) {
+                    *ry = *new;
                 }
             }
 
@@ -366,6 +396,25 @@ impl Instr for AA64Instruction {
                             if let VReg::Spilled(spill) = *rd {
                                 swaps.push((i, spill, Rd));
                                 *rd = VReg::RealRegister(AA64_REGISTER_IP0);
+                            }
+                        }
+
+                        AA64Instruction::MSub { rd1, rd2, rx, ry, .. } => {
+                            if let VReg::Spilled(spill) = *rx {
+                                swaps.push((i, spill, Rx));
+                                *rx = VReg::RealRegister(AA64_REGISTER_IP0);
+                            }
+                            if let VReg::Spilled(spill) = *ry {
+                                swaps.push((i, spill, Ry));
+                                *ry = VReg::RealRegister(AA64_REGISTER_IP0);
+                            }
+                            if let VReg::Spilled(spill) = *rd1 {
+                                swaps.push((i, spill, Rd));
+                                *rd1 = VReg::RealRegister(AA64_REGISTER_IP0);
+                            }
+                            if let VReg::Spilled(spill) = *rd2 {
+                                swaps.push((i, spill, Rd));
+                                *rd2 = VReg::RealRegister(AA64_REGISTER_IP0);
                             }
                         }
 
@@ -506,6 +555,13 @@ fn write_instruction(file: &mut impl Write, vcode: &VCode<AA64Instruction>, func
 
         AA64Instruction::Integer { rd, value , size} => {
             writeln!(file, "    ldr {}, ={}", register(*rd, size.clone()), value)?;
+        }
+
+        AA64Instruction::MSub { rd1, rd2, rx, ry, size } => {
+            writeln!(file, "    msub {}, {}, {}, {}",
+                register(*rd1, size.clone()), register(*rd2, size.clone()),
+                register(*rx , size.clone()), register(*ry , size.clone())
+            )?;
         }
 
         AA64Instruction::AluOp { op, rd, rx, ry, size } => {
@@ -770,7 +826,6 @@ impl InstructionSelector for AA64Selector {
             | Operation::Sub(a, b)
             | Operation::Mul(a, b)
             | Operation::Div(a, b)
-            | Operation::Mod(a, b)
             | Operation::Bsl(a, b)
             | Operation::Bsr(a, b)
             | Operation::BitAnd(a, b)
@@ -785,20 +840,31 @@ impl InstructionSelector for AA64Selector {
                         Operation::Sub(_, _)    => AA64AluOp::Sub,
                         Operation::Mul(_, _)    => AA64AluOp::Mul,
                         Operation::Div(_, _)    => AA64AluOp::Div,
-                        Operation::Mod(_, _)    => todo!(),
                         Operation::Bsl(_, _)    => AA64AluOp::Lsl,
                         Operation::Bsr(_, _)    => AA64AluOp::Lsr,
                         Operation::BitAnd(_, _) => AA64AluOp::And,
                         Operation::BitOr(_, _)  => AA64AluOp::Orr,
                         Operation::BitXor(_, _) => AA64AluOp::Eor,
                         _ => unreachable!(),
-                    }, rd, rx, ry, size: AA64RegSizes::B64 });
+                }, rd, rx, ry, size: AA64RegSizes::B64 });
+            }
+            
+            Operation::Mod(a, b) => {
+                let rx = gen.get_vreg(a);
+                let ry = gen.get_vreg(b);
+                let rt = gen.new_unassociated_vreg();
+                gen.push_instruction(AA64Instruction::AluOp {
+                    op: AA64AluOp::Div,
+                    rd: rt, rx, ry, size: AA64RegSizes::B64 
+                });
+                gen.push_instruction(AA64Instruction::MSub {
+                    rd1: rd, rd2: VReg::RealRegister(AA64_REGISTER_ZERO), rx: ry, ry: rx, size: AA64RegSizes::B64
+                });
             }
 
             Operation::Eq(a, b) => {
                 let rx = gen.get_vreg(b);
                 let ry = gen.get_vreg(a);
-                let rd = gen.new_unassociated_vreg();
                 gen.push_instruction(AA64Instruction::Compare { rx, ry, size: AA64RegSizes::B64 });
                 gen.push_instruction(AA64Instruction::CondSet { rd, cnd: AA64CompOp::EQ, size: AA64RegSizes::B64 });
             }
@@ -806,7 +872,6 @@ impl InstructionSelector for AA64Selector {
             Operation::Ne(a, b) => {
                 let rx = gen.get_vreg(b);
                 let ry = gen.get_vreg(a);
-                let rd = gen.new_unassociated_vreg();
                 gen.push_instruction(AA64Instruction::Compare { rx, ry, size: AA64RegSizes::B64 });
                 gen.push_instruction(AA64Instruction::CondSet { rd, cnd: AA64CompOp::NE, size: AA64RegSizes::B64 });
             }
@@ -814,7 +879,6 @@ impl InstructionSelector for AA64Selector {
             Operation::Lt(a, b) => {
                 let rx = gen.get_vreg(b);
                 let ry = gen.get_vreg(a);
-                let rd = gen.new_unassociated_vreg();
                 gen.push_instruction(AA64Instruction::Compare { rx, ry, size: AA64RegSizes::B64 });
                 gen.push_instruction(AA64Instruction::CondSet { rd, cnd: AA64CompOp::LT, size: AA64RegSizes::B64 });
             }
@@ -822,7 +886,6 @@ impl InstructionSelector for AA64Selector {
             Operation::Le(a, b) => {
                 let rx = gen.get_vreg(b);
                 let ry = gen.get_vreg(a);
-                let rd = gen.new_unassociated_vreg();
                 gen.push_instruction(AA64Instruction::Compare { rx, ry, size: AA64RegSizes::B64 });
                 gen.push_instruction(AA64Instruction::CondSet { rd, cnd: AA64CompOp::LE, size: AA64RegSizes::B64 });
             }
@@ -830,7 +893,6 @@ impl InstructionSelector for AA64Selector {
             Operation::Gt(a, b) => {
                 let rx = gen.get_vreg(b);
                 let ry = gen.get_vreg(a);
-                let rd = gen.new_unassociated_vreg();
                 gen.push_instruction(AA64Instruction::Compare { rx, ry, size: AA64RegSizes::B64 });
                 gen.push_instruction(AA64Instruction::CondSet { rd, cnd: AA64CompOp::GT, size: AA64RegSizes::B64 });
             }
@@ -838,7 +900,6 @@ impl InstructionSelector for AA64Selector {
             Operation::Ge(a, b) => {
                 let rx = gen.get_vreg(b);
                 let ry = gen.get_vreg(a);
-                let rd = gen.new_unassociated_vreg();
                 gen.push_instruction(AA64Instruction::Compare { rx, ry, size: AA64RegSizes::B64 });
                 gen.push_instruction(AA64Instruction::CondSet { rd, cnd: AA64CompOp::GE, size: AA64RegSizes::B64 });
             }
@@ -946,7 +1007,6 @@ impl InstructionSelector for AA64Selector {
             Operation::Store(_, _) => todo!(),
 
             Operation::Bitcast(_, v) => {
-                let rd = gen.new_unassociated_vreg();
                 let rx = gen.get_vreg(v);
                 gen.push_instruction(AA64Instruction::AluOpImm {
                     op: AA64AluOp::Add,
@@ -958,7 +1018,6 @@ impl InstructionSelector for AA64Selector {
             },
 
             Operation::BitExtend(_, v) => {
-                let rd = gen.new_unassociated_vreg();
                 let rx = gen.get_vreg(v);
                 gen.push_instruction(AA64Instruction::AluOpImm {
                     op: AA64AluOp::Add,
@@ -974,7 +1033,6 @@ impl InstructionSelector for AA64Selector {
                     _ => panic!()
                 };
 
-                let rd = gen.new_unassociated_vreg();
                 let rx = gen.get_vreg(v);
                 gen.push_instruction(AA64Instruction::AluOpImm {
                     op: AA64AluOp::And,
