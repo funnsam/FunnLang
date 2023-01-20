@@ -97,7 +97,7 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
 
 fn compile_expr(expr: Expr, builder: &mut ModuleBuilder, functions: &mut HashMap<String, FunctionId>, variables: &HashMap<String, VariableId>, typ: &IRType) -> Value {
     match expr {
-        Expr::Number(n) => builder.push_instruction(n.to_integer_operation()).unwrap().unwrap(),
+        Expr::Number(n) => builder.push_instruction((n as u8).to_integer_operation()).unwrap().unwrap(),
         Expr::BoolOp { left, oper, right } => {
             match oper {
                 BoolOp::Add => {

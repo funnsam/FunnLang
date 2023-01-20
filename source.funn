@@ -1,6 +1,5 @@
 @import "*std/?/io"
 
 func pub main() void {
-    putchar(' ' << 1);
-    putchar('\n');
+    var a u8 = 1 + 2 + 3;
 }

@@ -5,7 +5,7 @@ use {
     codegem::regalloc::RegisterAllocator,
 };
 
-use codegem::arch::{Instr, InstructionSelector, Location, VCode, VCodeGenerator, VReg, Function};
+use codegem::{arch::{Instr, InstructionSelector, Location, VCode, VCodeGenerator, VReg, Function}, ir::Type};
 
 pub const AA64_REGISTER_ZERO: usize = 0;
 pub const AA64_REGISTER_X0  : usize = 1;
@@ -40,6 +40,20 @@ pub const AA64_REGISTER_X28 : usize = 29;
 pub const AA64_REGISTER_FP  : usize = 30;
 pub const AA64_REGISTER_LR  : usize = 31;
 pub const AA64_REGISTER_SP  : usize = 32;
+
+#[derive(Clone)]
+pub enum AA64RegSizes {
+    B64, B32
+}
+
+impl Display for AA64RegSizes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AA64RegSizes::B64 => write!(f, "x"),
+            AA64RegSizes::B32 => write!(f, "w"),
+        }
+    }
+}
 
 pub enum AA64AluOp {
     Add,
@@ -97,6 +111,7 @@ pub enum AA64Instruction {
     Integer {
         rd: VReg,
         value: u64,
+        size: AA64RegSizes
     },
 
     AluOp {
@@ -104,6 +119,7 @@ pub enum AA64Instruction {
         rd: VReg,
         rx: VReg,
         ry: VReg,
+        size: AA64RegSizes
     },
 
     AluOpImm {
@@ -111,6 +127,7 @@ pub enum AA64Instruction {
         rd: VReg,
         rx: VReg,
         imm: i16,
+        size: AA64RegSizes
     },
 
     Bl {
@@ -123,6 +140,7 @@ pub enum AA64Instruction {
         rx: VReg,
         ry: VReg,
         location: Location,
+        size: AA64RegSizes
     },
 
     Ret,
@@ -131,51 +149,32 @@ pub enum AA64Instruction {
         rd: VReg,
         imm: i16,
         rx: VReg,
+        size: AA64RegSizes
     },
 
     Store {
         rx: VReg,
         imm: i16,
         ry: VReg,
+        size: AA64RegSizes
     },
 
     Compare {
         rx: VReg,
-        ry: VReg
+        ry: VReg,
+        size: AA64RegSizes
     },
 
     CondSet {
         rd: VReg,
-        cnd: AA64CompOp
+        cnd: AA64CompOp,
+        size: AA64RegSizes
     },
 }
 
 impl Display for AA64Instruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AA64Instruction::PhiPlaceholder { rd, .. } => write!(f, "phi {} ...", rd),
-
-            AA64Instruction::Integer { rd, value } => write!(f, "ldr {}, ={}", rd, value),
-
-            AA64Instruction::AluOp { op, rd, rx, ry } => write!(f, "{} {}, {}, {}", op, rd, rx, ry),
-            AA64Instruction::AluOpImm { op, rd, rx, imm } => write!(f, "{} {}, {}, {}", op, rd, rx, imm),
-
-            AA64Instruction::Bl { rd, location, .. } => write!(f, "bl {}, {}", rd, location),
-
-            AA64Instruction::Bne { rx, ry, location } => {
-                write!(f, "bne {}, {}, {}", rx, ry, location)
-            }
-
-            AA64Instruction::Ret => write!(f, "ret"),
-
-            AA64Instruction::Load { rd, imm, rx } => write!(f, "load {}, {}({})", rd, imm, rx),
-
-            AA64Instruction::Store { rx, imm, ry } => write!(f, "store {}, {}({})", rx, imm, ry),
-
-            AA64Instruction::Compare { rx, ry } => write!(f, "cmp {}, {}", rx, ry),
-
-            AA64Instruction::CondSet { rd, cnd } => write!(f, "cset {}, {}", rd, cnd)
-        }
+        write!(f, "unimplemented!")
     }
 }
 
@@ -442,6 +441,7 @@ impl Instr for AA64Instruction {
                                 rx: VReg::RealRegister(AA64_REGISTER_IP0),
                                 imm: spill as i16 * -8,
                                 ry: VReg::RealRegister(AA64_REGISTER_FP),
+                                size: AA64RegSizes::B64,
                             });
                         }
 
@@ -450,6 +450,7 @@ impl Instr for AA64Instruction {
                                 rd: VReg::RealRegister(AA64_REGISTER_IP0),
                                 imm: spill as i16 * -8,
                                 rx: VReg::RealRegister(AA64_REGISTER_FP),
+                                size: AA64RegSizes::B64,
                             });
                         }
 
@@ -458,6 +459,7 @@ impl Instr for AA64Instruction {
                                 rd: VReg::RealRegister(AA64_REGISTER_IP0),
                                 imm: spill as i16 * -8,
                                 rx: VReg::RealRegister(AA64_REGISTER_FP),
+                                size: AA64RegSizes::B64,
                             });
                         }
                     }
@@ -502,20 +504,20 @@ fn write_instruction(file: &mut impl Write, vcode: &VCode<AA64Instruction>, func
     match instruction {
         AA64Instruction::PhiPlaceholder { .. } => (),
 
-        AA64Instruction::Integer { rd, value } => {
-            writeln!(file, "    ldr {}, ={}", register(*rd), value)?;
+        AA64Instruction::Integer { rd, value , size} => {
+            writeln!(file, "    ldr {}, ={}", register(*rd, size.clone()), value)?;
         }
 
-        AA64Instruction::AluOp { op, rd, rx, ry } => {
-            writeln!(file, "    {} {}, {}, {}", op, register(*rd), register(*rx), register(*ry))?;
+        AA64Instruction::AluOp { op, rd, rx, ry, size } => {
+            writeln!(file, "    {} {}, {}, {}", op, register(*rd, size.clone()), register(*rx, size.clone()), register(*ry, size.clone()))?;
         }
 
-        AA64Instruction::AluOpImm { op: AA64AluOp::Sub, rd, rx, imm } => {
-            writeln!(file, "    addi {}, {}, {}", register(*rd), register(*rx), -imm)?;
+        AA64Instruction::AluOpImm { op: AA64AluOp::Sub, rd, rx, imm, size } => {
+            writeln!(file, "    addi {}, {}, {}", register(*rd, size.clone()), register(*rx, size.clone()), -imm)?;
         }
 
-        AA64Instruction::AluOpImm { op, rd, rx, imm } => {
-            writeln!(file, "    {} {}, {}, {}", op, register(*rd), register(*rx), imm)?;
+        AA64Instruction::AluOpImm { op, rd, rx, imm, size } => {
+            writeln!(file, "    {} {}, {}, {}", op, register(*rd, size.clone()), register(*rx, size.clone()), imm)?;
         }
 
         AA64Instruction::Bl { rd: _, location, .. } => {
@@ -529,14 +531,14 @@ fn write_instruction(file: &mut impl Write, vcode: &VCode<AA64Instruction>, func
             }
         }
 
-        AA64Instruction::Bne { rx, ry, location } => {
+        AA64Instruction::Bne { rx, ry, location, size } => {
             match *location {
                 Location::InternalLabel(_) => {
-                    writeln!(file, "    cmp {}, {}", register(*rx), register(*ry))?;
+                    writeln!(file, "    cmp {}, {}", register(*rx, size.clone()), register(*ry, size.clone()))?;
                     writeln!(file, "    bne .{}{}", func.name, location)?;
                 }
                 Location::Function(f) => {
-                    writeln!(file, "    cmp {}, {}", register(*rx), register(*ry))?;
+                    writeln!(file, "    cmp {}, {}", register(*rx, size.clone()), register(*ry, size.clone()))?;
                     writeln!(file, "    bne {}", vcode.functions[f].name)?;
                 }
             }
@@ -550,65 +552,75 @@ fn write_instruction(file: &mut impl Write, vcode: &VCode<AA64Instruction>, func
             writeln!(file, "    ret")?;
         }
 
-        AA64Instruction::Load { rd, imm, rx } => {
-            writeln!(file, "    ldr {}, [{}, #{}]", register(*rd), register(*rx), imm)?;
+        AA64Instruction::Load { rd, imm, rx, size } => {
+            writeln!(file, "    ldr {}, [{}, #{}]", register(*rd, size.clone()), register(*rx, size.clone()), imm)?;
         }
 
-        AA64Instruction::Store { rx, imm, ry } => {
-            writeln!(file, "    str {}, [{}, #{}]", register(*rx), register(*ry), imm)?;
+        AA64Instruction::Store { rx, imm, ry, size } => {
+            writeln!(file, "    str {}, [{}, #{}]", register(*rx, size.clone()), register(*ry, size.clone()), imm)?;
         }
 
-        AA64Instruction::Compare { rx, ry } => {
-            writeln!(file, "    cmp {}, {}", register(*rx), register(*ry))?;
+        AA64Instruction::Compare { rx, ry, size } => {
+            writeln!(file, "    cmp {}, {}", register(*rx, size.clone()), register(*ry, size.clone()))?;
         }
 
-        AA64Instruction::CondSet { rd, cnd } => {
-            writeln!(file, "    cset {}, {}", register(*rd), cnd)?;
+        AA64Instruction::CondSet { rd, cnd, size } => {
+            writeln!(file, "    cset {}, {}", register(*rd, size.clone()), cnd)?;
     }
     }
 
     Ok(())
 }
 
-fn register(reg: VReg) -> String {
+fn auto_size(t: &Type) -> AA64RegSizes {
+    match t {
+        Type::Integer(_, v) => match v {
+            0..=32 => AA64RegSizes::B32,
+            _ => AA64RegSizes::B64
+        }
+        _ => AA64RegSizes::B64
+    }
+}
+
+fn register(reg: VReg, s: AA64RegSizes) -> String {
     match reg {
         VReg::RealRegister(reg) => {
-            String::from(match reg {
-                v if v == AA64_REGISTER_ZERO => "xzr",
-                v if v == AA64_REGISTER_X0  => "x0",
-                v if v == AA64_REGISTER_X1  => "x1",
-                v if v == AA64_REGISTER_X2  => "x2",
-                v if v == AA64_REGISTER_X3  => "x3",
-                v if v == AA64_REGISTER_X4  => "x4",
-                v if v == AA64_REGISTER_X5  => "x5",
-                v if v == AA64_REGISTER_X6  => "x6",
-                v if v == AA64_REGISTER_X7  => "x7",
-                v if v == AA64_REGISTER_X8  => "x8",
-                v if v == AA64_REGISTER_X9  => "x9",
-                v if v == AA64_REGISTER_X10 => "x10",
-                v if v == AA64_REGISTER_X11 => "x11",
-                v if v == AA64_REGISTER_X12 => "x12",
-                v if v == AA64_REGISTER_X13 => "x13",
-                v if v == AA64_REGISTER_X14 => "x14",
-                v if v == AA64_REGISTER_X15 => "x15",
-                v if v == AA64_REGISTER_IP0 => "x16",
-                v if v == AA64_REGISTER_IP1 => "x17",
-                v if v == AA64_REGISTER_X18 => "x18",
-                v if v == AA64_REGISTER_X19 => "x19",
-                v if v == AA64_REGISTER_X20 => "x20",
-                v if v == AA64_REGISTER_X21 => "x21",
-                v if v == AA64_REGISTER_X22 => "x22",
-                v if v == AA64_REGISTER_X23 => "x23",
-                v if v == AA64_REGISTER_X24 => "x24",
-                v if v == AA64_REGISTER_X25 => "x25",
-                v if v == AA64_REGISTER_X26 => "x26",
-                v if v == AA64_REGISTER_X27 => "x27",
-                v if v == AA64_REGISTER_X28 => "x28",
-                v if v == AA64_REGISTER_FP  => "x29",
-                v if v == AA64_REGISTER_LR  => "x30",
-                v if v == AA64_REGISTER_SP  => "sp",
+            match reg {
+                AA64_REGISTER_ZERO  => format!("{}zr", s),
+                AA64_REGISTER_X0    => format!("{}0", s),
+                AA64_REGISTER_X1    => format!("{}1", s),
+                AA64_REGISTER_X2    => format!("{}2", s),
+                AA64_REGISTER_X3    => format!("{}3", s),
+                AA64_REGISTER_X4    => format!("{}4", s),
+                AA64_REGISTER_X5    => format!("{}5", s),
+                AA64_REGISTER_X6    => format!("{}6", s),
+                AA64_REGISTER_X7    => format!("{}7", s),
+                AA64_REGISTER_X8    => format!("{}8", s),
+                AA64_REGISTER_X9    => format!("{}9", s),
+                AA64_REGISTER_X10   => format!("{}10", s),
+                AA64_REGISTER_X11   => format!("{}11", s),
+                AA64_REGISTER_X12   => format!("{}12", s),
+                AA64_REGISTER_X13   => format!("{}13", s),
+                AA64_REGISTER_X14   => format!("{}14", s),
+                AA64_REGISTER_X15   => format!("{}15", s),
+                AA64_REGISTER_IP0   => format!("{}16", s),
+                AA64_REGISTER_IP1   => format!("{}17", s),
+                AA64_REGISTER_X18   => format!("{}18", s),
+                AA64_REGISTER_X19   => format!("{}19", s),
+                AA64_REGISTER_X20   => format!("{}20", s),
+                AA64_REGISTER_X21   => format!("{}21", s),
+                AA64_REGISTER_X22   => format!("{}22", s),
+                AA64_REGISTER_X23   => format!("{}23", s),
+                AA64_REGISTER_X24   => format!("{}24", s),
+                AA64_REGISTER_X25   => format!("{}25", s),
+                AA64_REGISTER_X26   => format!("{}26", s),
+                AA64_REGISTER_X27   => format!("{}27", s),
+                AA64_REGISTER_X28   => format!("{}28", s),
+                AA64_REGISTER_FP    => format!("{}29", s),
+                AA64_REGISTER_LR    => format!("{}30", s),
+                AA64_REGISTER_SP    => format!("sp"),
                 _ => unreachable!(),
-            })
+            }
         }
 
         VReg::Virtual(_) => unreachable!(),
@@ -629,22 +641,26 @@ impl InstructionSelector for AA64Selector {
             rd: VReg::RealRegister(AA64_REGISTER_SP),
             rx: VReg::RealRegister(AA64_REGISTER_SP),
             imm: -16,
+            size: AA64RegSizes::B64,
         });
         gen.push_prelabel_instruction(AA64Instruction::Store {
             rx: VReg::RealRegister(AA64_REGISTER_FP),
             imm: 8,
             ry: VReg::RealRegister(AA64_REGISTER_SP),
+            size: AA64RegSizes::B64,
         });
         gen.push_prelabel_instruction(AA64Instruction::Store {
             rx: VReg::RealRegister(AA64_REGISTER_LR),
             imm: 0,
             ry: VReg::RealRegister(AA64_REGISTER_SP),
+            size: AA64RegSizes::B64,
         });
         gen.push_prelabel_instruction(AA64Instruction::AluOpImm {
             op: AA64AluOp::Add,
             rd: VReg::RealRegister(AA64_REGISTER_FP),
             rx: VReg::RealRegister(AA64_REGISTER_SP),
             imm: 0,
+            size: AA64RegSizes::B64,
         });
 
         // TODO: autodetect these
@@ -667,12 +683,14 @@ impl InstructionSelector for AA64Selector {
             rd: VReg::RealRegister(AA64_REGISTER_SP),
             rx: VReg::RealRegister(AA64_REGISTER_SP),
             imm: -(callee_saved_regs.len() as i16 * 8),
+            size: AA64RegSizes::B64,
         });
         for (i, &reg) in callee_saved_regs.iter().enumerate() {
             gen.push_prelabel_instruction(AA64Instruction::Store {
                 rx: VReg::RealRegister(reg),
                 imm: (i as i16) * 8,
                 ry: VReg::RealRegister(AA64_REGISTER_SP),
+                size: AA64RegSizes::B64,
             });
         }
         for (i, &reg) in callee_saved_regs.iter().enumerate() {
@@ -680,6 +698,7 @@ impl InstructionSelector for AA64Selector {
                 rd: VReg::RealRegister(reg),
                 imm: (i as i16) * 8,
                 rx: VReg::RealRegister(AA64_REGISTER_SP),
+                size: AA64RegSizes::B64,
             });
         }
         gen.push_prereturn_instruction(AA64Instruction::AluOpImm {
@@ -687,6 +706,7 @@ impl InstructionSelector for AA64Selector {
             rd: VReg::RealRegister(AA64_REGISTER_SP),
             rx: VReg::RealRegister(AA64_REGISTER_SP),
             imm: callee_saved_regs.len() as i16 * 8,
+            size: AA64RegSizes::B64,
         });
 
         gen.push_prereturn_instruction(AA64Instruction::AluOpImm {
@@ -694,22 +714,26 @@ impl InstructionSelector for AA64Selector {
             rd: VReg::RealRegister(AA64_REGISTER_SP),
             rx: VReg::RealRegister(AA64_REGISTER_FP),
             imm: 0,
+            size: AA64RegSizes::B64,
         });
         gen.push_prereturn_instruction(AA64Instruction::Load {
             rd: VReg::RealRegister(AA64_REGISTER_LR),
             imm: 0,
             rx: VReg::RealRegister(AA64_REGISTER_FP),
+            size: AA64RegSizes::B64,
         });
         gen.push_prereturn_instruction(AA64Instruction::Load {
             rd: VReg::RealRegister(AA64_REGISTER_FP),
             imm: 8,
             rx: VReg::RealRegister(AA64_REGISTER_FP),
+            size: AA64RegSizes::B64,
         });
         gen.push_prereturn_instruction(AA64Instruction::AluOpImm {
             op: AA64AluOp::Add,
             rd: VReg::RealRegister(AA64_REGISTER_SP),
             rx: VReg::RealRegister(AA64_REGISTER_SP),
             imm: 16,
+            size: AA64RegSizes::B64,
         });
     }
 
@@ -730,16 +754,16 @@ impl InstructionSelector for AA64Selector {
         match op {
             Operation::Identity(value) => {
                 let rx = gen.get_vreg(value);
-                gen.push_instruction(AA64Instruction::AluOp { op: AA64AluOp::Add, rd, rx, ry: VReg::RealRegister(AA64_REGISTER_ZERO) });
+                gen.push_instruction(AA64Instruction::AluOp { op: AA64AluOp::Add, rd, rx, ry: VReg::RealRegister(AA64_REGISTER_ZERO), size: AA64RegSizes::B64 });
             }
 
-            Operation::Integer(_signed, mut value) => {
+            Operation::Integer(typ, mut value) => {
                 // TODO: better way to do this
                 while value.len() < 8 {
                     value.push(0);
                 }
                 let value = u64::from_le_bytes(value[..8].try_into().unwrap());
-                gen.push_instruction(AA64Instruction::Integer { rd, value });
+                gen.push_instruction(AA64Instruction::Integer { rd, value, size: auto_size(&typ) });
             }
 
             Operation::Add(a, b)
@@ -750,10 +774,11 @@ impl InstructionSelector for AA64Selector {
             | Operation::Bsl(a, b)
             | Operation::Bsr(a, b)
             | Operation::BitAnd(a, b)
-            | Operation::BitOr(a, b)
+            | Operation::BitOr (a, b)
             | Operation::BitXor(a, b) => {
                 let rx = gen.get_vreg(a);
                 let ry = gen.get_vreg(b);
+
                 gen.push_instruction(AA64Instruction::AluOp {
                     op: match op {
                         Operation::Add(_, _)    => AA64AluOp::Add,
@@ -767,55 +792,55 @@ impl InstructionSelector for AA64Selector {
                         Operation::BitOr(_, _)  => AA64AluOp::Orr,
                         Operation::BitXor(_, _) => AA64AluOp::Eor,
                         _ => unreachable!(),
-                    }, rd, rx, ry });
+                    }, rd, rx, ry, size: AA64RegSizes::B64 });
             }
 
             Operation::Eq(a, b) => {
                 let rx = gen.get_vreg(b);
                 let ry = gen.get_vreg(a);
                 let rd = gen.new_unassociated_vreg();
-                gen.push_instruction(AA64Instruction::Compare { rx, ry });
-                gen.push_instruction(AA64Instruction::CondSet { rd, cnd: AA64CompOp::EQ });
+                gen.push_instruction(AA64Instruction::Compare { rx, ry, size: AA64RegSizes::B64 });
+                gen.push_instruction(AA64Instruction::CondSet { rd, cnd: AA64CompOp::EQ, size: AA64RegSizes::B64 });
             }
 
             Operation::Ne(a, b) => {
                 let rx = gen.get_vreg(b);
                 let ry = gen.get_vreg(a);
                 let rd = gen.new_unassociated_vreg();
-                gen.push_instruction(AA64Instruction::Compare { rx, ry });
-                gen.push_instruction(AA64Instruction::CondSet { rd, cnd: AA64CompOp::NE });
+                gen.push_instruction(AA64Instruction::Compare { rx, ry, size: AA64RegSizes::B64 });
+                gen.push_instruction(AA64Instruction::CondSet { rd, cnd: AA64CompOp::NE, size: AA64RegSizes::B64 });
             }
 
             Operation::Lt(a, b) => {
                 let rx = gen.get_vreg(b);
                 let ry = gen.get_vreg(a);
                 let rd = gen.new_unassociated_vreg();
-                gen.push_instruction(AA64Instruction::Compare { rx, ry });
-                gen.push_instruction(AA64Instruction::CondSet { rd, cnd: AA64CompOp::LT });
+                gen.push_instruction(AA64Instruction::Compare { rx, ry, size: AA64RegSizes::B64 });
+                gen.push_instruction(AA64Instruction::CondSet { rd, cnd: AA64CompOp::LT, size: AA64RegSizes::B64 });
             }
 
             Operation::Le(a, b) => {
                 let rx = gen.get_vreg(b);
                 let ry = gen.get_vreg(a);
                 let rd = gen.new_unassociated_vreg();
-                gen.push_instruction(AA64Instruction::Compare { rx, ry });
-                gen.push_instruction(AA64Instruction::CondSet { rd, cnd: AA64CompOp::LE });
+                gen.push_instruction(AA64Instruction::Compare { rx, ry, size: AA64RegSizes::B64 });
+                gen.push_instruction(AA64Instruction::CondSet { rd, cnd: AA64CompOp::LE, size: AA64RegSizes::B64 });
             }
 
             Operation::Gt(a, b) => {
                 let rx = gen.get_vreg(b);
                 let ry = gen.get_vreg(a);
                 let rd = gen.new_unassociated_vreg();
-                gen.push_instruction(AA64Instruction::Compare { rx, ry });
-                gen.push_instruction(AA64Instruction::CondSet { rd, cnd: AA64CompOp::GT });
+                gen.push_instruction(AA64Instruction::Compare { rx, ry, size: AA64RegSizes::B64 });
+                gen.push_instruction(AA64Instruction::CondSet { rd, cnd: AA64CompOp::GT, size: AA64RegSizes::B64 });
             }
 
             Operation::Ge(a, b) => {
                 let rx = gen.get_vreg(b);
                 let ry = gen.get_vreg(a);
                 let rd = gen.new_unassociated_vreg();
-                gen.push_instruction(AA64Instruction::Compare { rx, ry });
-                gen.push_instruction(AA64Instruction::CondSet { rd, cnd: AA64CompOp::GE });
+                gen.push_instruction(AA64Instruction::Compare { rx, ry, size: AA64RegSizes::B64 });
+                gen.push_instruction(AA64Instruction::CondSet { rd, cnd: AA64CompOp::GE, size: AA64RegSizes::B64 });
             }
 
             Operation::Phi(mapping) => {
@@ -854,12 +879,14 @@ impl InstructionSelector for AA64Selector {
                         rd: VReg::RealRegister(AA64_REGISTER_SP),
                         rx: VReg::RealRegister(AA64_REGISTER_SP),
                         imm: -(save_regs.len() as i16 * 8),
+                        size: AA64RegSizes::B64
                     });
                     for (i, &rx) in save_regs.iter().enumerate() {
                         gen.push_instruction(AA64Instruction::Store {
                             rx,
                             imm: i as i16 * 8,
                             ry: VReg::RealRegister(AA64_REGISTER_SP),
+                            size: AA64RegSizes::B64
                         });
                     }
 
@@ -872,6 +899,7 @@ impl InstructionSelector for AA64Selector {
                             rd: clobber,
                             rx,
                             ry: VReg::RealRegister(AA64_REGISTER_ZERO),
+                            size: AA64RegSizes::B64
                         });
 
                         clobber
@@ -887,6 +915,7 @@ impl InstructionSelector for AA64Selector {
                         rd,
                         rx: VReg::RealRegister(AA64_REGISTER_X0),
                         ry: VReg::RealRegister(AA64_REGISTER_ZERO),
+                        size: AA64RegSizes::B64
                     });
 
                     // TODO: better way of doing this
@@ -899,6 +928,7 @@ impl InstructionSelector for AA64Selector {
                             rd,
                             imm: i as i16 * 8,
                             rx: VReg::RealRegister(AA64_REGISTER_SP),
+                            size: AA64RegSizes::B64
                         });
                     }
                     gen.push_instruction(AA64Instruction::AluOpImm {
@@ -906,6 +936,7 @@ impl InstructionSelector for AA64Selector {
                         rd: VReg::RealRegister(AA64_REGISTER_SP),
                         rx: VReg::RealRegister(AA64_REGISTER_SP),
                         imm: (save_regs.len() as i16 * 8),
+                        size: AA64RegSizes::B64
                     });
                 }
             }
@@ -913,9 +944,46 @@ impl InstructionSelector for AA64Selector {
             Operation::CallIndirect(_, _) => todo!(),
             Operation::Load(_) => todo!(),
             Operation::Store(_, _) => todo!(),
-            Operation::Bitcast(_, _) => todo!(),
-            Operation::BitExtend(_, _) => todo!(),
-            Operation::BitReduce(_, _) => todo!(),
+
+            Operation::Bitcast(_, v) => {
+                let rd = gen.new_unassociated_vreg();
+                let rx = gen.get_vreg(v);
+                gen.push_instruction(AA64Instruction::AluOpImm {
+                    op: AA64AluOp::Add,
+                    rd,
+                    rx,
+                    imm: 0,
+                    size: AA64RegSizes::B64
+                });
+            },
+
+            Operation::BitExtend(_, v) => {
+                let rd = gen.new_unassociated_vreg();
+                let rx = gen.get_vreg(v);
+                gen.push_instruction(AA64Instruction::AluOpImm {
+                    op: AA64AluOp::Add,
+                    rd,
+                    rx,
+                    imm: 0,
+                    size: AA64RegSizes::B64
+                });
+            },
+            Operation::BitReduce(t, v) => {
+                let mask = match t {
+                    codegem::ir::Type::Integer(_, n) => 1 << n - 1,
+                    _ => panic!()
+                };
+
+                let rd = gen.new_unassociated_vreg();
+                let rx = gen.get_vreg(v);
+                gen.push_instruction(AA64Instruction::AluOpImm {
+                    op: AA64AluOp::And,
+                    rd,
+                    rx,
+                    imm: mask,
+                    size: AA64RegSizes::B64
+                });
+            },
         }
     }
 
@@ -934,6 +1002,7 @@ impl InstructionSelector for AA64Selector {
                     rd: VReg::RealRegister(AA64_REGISTER_X0),
                     rx,
                     imm: 0,
+                    size: AA64RegSizes::B64
                 });
                 gen.push_instruction(AA64Instruction::Ret);
             }
@@ -955,6 +1024,7 @@ impl InstructionSelector for AA64Selector {
                         rx,
                         ry: VReg::RealRegister(AA64_REGISTER_ZERO),
                         location: Location::InternalLabel(l1),
+                        size: AA64RegSizes::B64
                     });
                 }
                 if let Some(&l2) = gen.label_map().get(&l2) {
@@ -992,6 +1062,7 @@ impl InstructionSelector for AA64Selector {
                                 rd,
                                 rx,
                                 ry: VReg::RealRegister(AA64_REGISTER_ZERO),
+                                size: AA64RegSizes::B64
                             },
                         );
                     }
