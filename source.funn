@@ -1,5 +1,5 @@
 @import "*std/?/io"
 
 func pub main() void {
-    putchar(0x80 % 0x40);
+    putchar(0xB0 % 0x80);
 }

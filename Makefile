@@ -22,3 +22,7 @@ debug:
 	cargo build
 	-rm $(TNAME) -f
 	-cp $(DDNAME) .
+
+install:
+	cargo build -r
+	cargo install --path="."

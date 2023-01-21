@@ -29,13 +29,13 @@ use clap::Parser;
 
 #[derive(Parser)]
 struct Args {
-    #[arg(value_name = "Input file")]
+    #[arg(value_name="Input file")]
     input_file: String,
 
     #[arg(short, long, default_value="urcl")]
     target: String,
 
-    #[arg(short, long, default_value="out.s")]
+    #[arg(short, long, default_value="out.s", value_name="Output file")]
     output: String
 }
 
