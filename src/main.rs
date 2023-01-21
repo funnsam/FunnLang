@@ -23,7 +23,7 @@ use lexer::*;
 use preprocess::*;
 use ast::*;
 
-use crate::compiler::aarch64::AA64Selector;
+use codegem_aarch64::AA64Selector;
 
 use clap::Parser;
 
