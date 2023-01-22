@@ -1,5 +1,17 @@
 @import "*std/?/io"
 
 func pub main() void {
-    putchar(0xB0 % 0x80);
+    putchar('0');
+    if (1 == 0) {
+        putchar('1');
+    } else if (2 == 1) {
+        putchar('2');
+    } else {
+        putchar('3');
+        if (1 == 1) {
+            putchar('4');
+        }
+    }
+    putchar('5');
+    return;
 }

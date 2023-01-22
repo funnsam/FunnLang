@@ -54,12 +54,17 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
                 let cond_block = builder.push_block().unwrap();
                 builder.set_terminator(Terminator::Jump(cond_block)).unwrap();
                 builder.switch_to_block(cond_block);
+
                 let body_block = builder.push_block().unwrap();
                 let end_block = builder.push_block().unwrap();
+
                 let cond = compile_expr(cond, builder, functions, &vars, &IRType::Integer(true, 32));
+
                 builder.set_terminator(Terminator::Branch(cond, body_block, end_block)).unwrap();
                 builder.switch_to_block(body_block);
+                
                 compile(body, builder, functions, &vars);
+
                 builder.set_terminator(Terminator::Jump(cond_block)).unwrap();
                 builder.switch_to_block(end_block);
             },
@@ -89,6 +94,28 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
                 }
                 let a = builder.push_block().unwrap();
                 builder.switch_to_block(a);
+            },
+            Node::Branch { cond, body } => {
+                let after = builder.push_block().unwrap();
+                for (i, cond) in cond.iter().enumerate() {
+                    let cond = compile_expr(cond.to_owned(), builder, functions, variables, &IRType::Void);
+
+                    let body_block  = builder.push_block().unwrap();
+                    let end_block   = builder.push_block().unwrap();
+    
+                    builder.set_terminator(Terminator::Branch(cond, body_block, end_block)).unwrap();
+                    builder.switch_to_block(body_block);
+                    
+                    compile(body[i].to_owned(), builder, functions, &vars);
+                    
+                    builder.set_terminator(Terminator::Jump(after)).unwrap();
+                    builder.switch_to_block(end_block);
+                }
+                if cond.len() != body.len() {
+                    compile(body.last().unwrap().to_owned(), builder, functions, &vars);
+                }
+                builder.set_terminator(Terminator::Jump(after)).unwrap();
+                builder.switch_to_block(after);
             }
             _ => todo!(),
         }
