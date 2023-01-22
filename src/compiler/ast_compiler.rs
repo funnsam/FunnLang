@@ -210,6 +210,13 @@ fn compile_expr(expr: Expr, builder: &mut ModuleBuilder, functions: &mut HashMap
             let val = compile_expr(*val, builder, functions, variables, typ);
             builder.push_instruction(auto_cast(typ, &a.to_ir_type(), &val)).unwrap().unwrap()
         },
+        Expr::Function { name, args: _args } => {
+            let mut args = Vec::with_capacity(_args.len());
+            for i in &_args {
+                args.push(compile_expr(i.to_owned(), builder, functions, variables, typ))
+            }
+            builder.push_instruction(Operation::Call(functions[&name], args)).unwrap().unwrap()
+        }
         _ => todo!("Unimplimented expression type.")
     }
 }
