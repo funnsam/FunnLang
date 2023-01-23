@@ -35,7 +35,6 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
                 functions.insert(func_name, func);
                 let b = builder.push_block().unwrap();
                 builder.switch_to_block(b);
-                builder.set_terminator(Terminator::ReturnVoid).unwrap();
                 
                 let args = builder.get_function_args(func).unwrap();
                 
@@ -53,18 +52,16 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
             },
             Node::While { cond, body } => {
                 let cond_block = builder.push_block().unwrap();
-                builder.set_terminator(Terminator::Jump(cond_block)).unwrap();
                 builder.switch_to_block(cond_block);
 
                 let body_block = builder.push_block().unwrap();
                 let end_block = builder.push_block().unwrap();
-                loops.push((body_block, end_block));
+                loops.push((cond_block, end_block));
 
                 let cond = compile_expr(cond, builder, functions, &vars, &IRType::Integer(true, 32));
-
                 builder.set_terminator(Terminator::Branch(cond, body_block, end_block)).unwrap();
+
                 builder.switch_to_block(body_block);
-                
                 compile(body, builder, functions, &vars, &loops);
 
                 builder.set_terminator(Terminator::Jump(cond_block)).unwrap();
@@ -112,7 +109,6 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
                     
                     compile(body[i].to_owned(), builder, functions, &vars, &loops);
                     
-                    builder.set_terminator(Terminator::Jump(after)).unwrap();
                     builder.switch_to_block(end_block);
                 }
                 if cond.len() != body.len() {
@@ -122,7 +118,6 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
                 builder.switch_to_block(after);
             },
             Node::Break => {
-                println!("{:?}", loops);
                 builder.set_terminator(Terminator::Jump(loops.last().unwrap().1)).unwrap();
                 // let a = builder.push_block().unwrap();
                 // builder.switch_to_block(a);
