@@ -26,17 +26,19 @@ pub fn preprocess(s: &mut Buffer<Token>, srcs: &mut Vec<String>, files: &mut Vec
                             },
                             _ => panic!()
                         };
-                        let src = std::fs::read_to_string(fname.clone()).expect("F");
-                        let mut tmp = lex(&mut crate::scanner::Scanner::new(src.chars().collect::<Vec<char>>()), *filec);
-                        let mut tok = preprocess(&mut tmp, srcs, files, filec, &targ);
-                        extra.data.push(Token { kind: TokenKind::LF(0, *filec), str: "\n".to_string() });
-                        extra.data.append(&mut tok.data);
+                        if !files.contains(&fname) {
+                            let src = std::fs::read_to_string(fname.clone()).expect("F");
+                            let mut tmp = lex(&mut crate::scanner::Scanner::new(src.chars().collect::<Vec<char>>()), *filec);
+                            let mut tok = preprocess(&mut tmp, srcs, files, filec, &targ);
+                            extra.data.push(Token { kind: TokenKind::LF(0, *filec), str: "\n".to_string() });
+                            extra.data.append(&mut tok.data);
+                            *filec += 1;
+                            srcs.push(src);
+                            files.push(fname);
+                        }
                         s.data.remove(s.index);
                         s.data.remove(s.index-1);
-                        s.index -= 2;
-                        *filec += 1;
-                        srcs.push(src);
-                        files.push(fname);
+                        s.index -= 1;
                     },
                     _ => panic!()
                 };
