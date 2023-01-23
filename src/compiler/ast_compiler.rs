@@ -69,6 +69,8 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
 
                 builder.set_terminator(Terminator::Jump(cond_block)).unwrap();
                 builder.switch_to_block(end_block);
+
+                loops.pop();
             },
             Node::VarAssign { var_name, val_expr } => {
                 let val = compile_expr(val_expr, builder, functions, &vars, &IRType::Integer(true, 32));
@@ -120,14 +122,15 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
                 builder.switch_to_block(after);
             },
             Node::Break => {
-                builder.set_terminator(Terminator::Jump(loops.pop().unwrap().1)).unwrap();
-                let a = builder.push_block().unwrap();
-                builder.switch_to_block(a);
+                println!("{:?}", loops);
+                builder.set_terminator(Terminator::Jump(loops.last().unwrap().1)).unwrap();
+                // let a = builder.push_block().unwrap();
+                // builder.switch_to_block(a);
             },
             Node::Continue => {
-                builder.set_terminator(Terminator::Jump(loops.pop().unwrap().0)).unwrap();
-                let a = builder.push_block().unwrap();
-                builder.switch_to_block(a);
+                builder.set_terminator(Terminator::Jump(loops.last().unwrap().0)).unwrap();
+                // let a = builder.push_block().unwrap();
+                // builder.switch_to_block(a);
             },
             _ => todo!(),
         }

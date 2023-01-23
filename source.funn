@@ -1,8 +1,14 @@
 @import "*std/?/io"
 
 func pub main() u8 {
+    var c i64 = 10;
     while (1) {
-        break;
+        if (c == 0) {
+            break;
+        } else {
+            c = c - 1;
+            continue;
+        }
     }
     return;
 }
