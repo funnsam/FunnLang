@@ -1,6 +1,6 @@
 use std::{collections::HashMap};
 
-use codegem::ir::{ModuleBuilder, Module, Value, FunctionId, VariableId, Type as IRType, ToIntegerOperation, Operation, Terminator};
+use codegem::ir::{ModuleBuilder, Module, Value, FunctionId, VariableId, Type as IRType, ToIntegerOperation, Operation, Terminator, BasicBlockId};
 
 use crate::ast::nodes::{Program, Node, FuncDefArg, Expr, BoolOp, CompOp};
 
@@ -10,12 +10,13 @@ pub fn compiler(prog: Program) -> Module {
     let mut functions: HashMap<String, FunctionId> = HashMap::new();
     let mut variables: HashMap<String, VariableId> = HashMap::new();
 
-    compile(prog, &mut builder, &mut functions, &mut variables);
+    compile(prog, &mut builder, &mut functions, &mut variables, &mut Vec::new());
     builder.build().unwrap()
 }
 
-fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<String, FunctionId>, variables: &HashMap<String, VariableId>) {
+fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<String, FunctionId>, variables: &HashMap<String, VariableId>, loops: &Vec<(BasicBlockId, BasicBlockId)>) {
     let mut vars = variables.clone();
+    let mut loops = loops.clone();
     for statement in prog.body {
         match statement {
             Node::FuncDefine { func_name, func_args, func_type, func_body, linkage } => {
@@ -42,7 +43,7 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
                     vars.insert(func_args[i].name.clone(), *v);
                 }
 
-                compile(func_body, builder, functions, &vars);
+                compile(func_body, builder, functions, &vars, &loops);
             },
             Node::VarDefine { var_type, var_name, val_expr } => {
                 let var = builder.push_variable(&var_name, &var_type.clone().to_ir_type()).unwrap();
@@ -57,13 +58,14 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
 
                 let body_block = builder.push_block().unwrap();
                 let end_block = builder.push_block().unwrap();
+                loops.push((body_block, end_block));
 
                 let cond = compile_expr(cond, builder, functions, &vars, &IRType::Integer(true, 32));
 
                 builder.set_terminator(Terminator::Branch(cond, body_block, end_block)).unwrap();
                 builder.switch_to_block(body_block);
                 
-                compile(body, builder, functions, &vars);
+                compile(body, builder, functions, &vars, &loops);
 
                 builder.set_terminator(Terminator::Jump(cond_block)).unwrap();
                 builder.switch_to_block(end_block);
@@ -80,7 +82,7 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
                 builder.push_instruction(Operation::Call(functions[&func_name], args)).unwrap();
             },
             Node::CodeBlock(block) => {
-                compile(block, builder, functions, &vars);
+                compile(block, builder, functions, &vars, &loops);
             },
             Node::Return(retval) => {
                 match retval {
@@ -106,17 +108,27 @@ fn compile(prog: Program, builder: &mut ModuleBuilder, functions: &mut HashMap<S
                     builder.set_terminator(Terminator::Branch(cond, body_block, end_block)).unwrap();
                     builder.switch_to_block(body_block);
                     
-                    compile(body[i].to_owned(), builder, functions, &vars);
+                    compile(body[i].to_owned(), builder, functions, &vars, &loops);
                     
                     builder.set_terminator(Terminator::Jump(after)).unwrap();
                     builder.switch_to_block(end_block);
                 }
                 if cond.len() != body.len() {
-                    compile(body.last().unwrap().to_owned(), builder, functions, &vars);
+                    compile(body.last().unwrap().to_owned(), builder, functions, &vars, &loops);
                 }
                 builder.set_terminator(Terminator::Jump(after)).unwrap();
                 builder.switch_to_block(after);
-            }
+            },
+            Node::Break => {
+                builder.set_terminator(Terminator::Jump(loops.pop().unwrap().1)).unwrap();
+                let a = builder.push_block().unwrap();
+                builder.switch_to_block(a);
+            },
+            Node::Continue => {
+                builder.set_terminator(Terminator::Jump(loops.pop().unwrap().0)).unwrap();
+                let a = builder.push_block().unwrap();
+                builder.switch_to_block(a);
+            },
             _ => todo!(),
         }
     }

@@ -52,6 +52,12 @@ impl Parser {
         }
     }
 
+    pub fn expect_in_loop(&mut self, cur: &Node) {
+        if !self.is_in_loop() {
+            self.error(ErrorKind::UnexpectedNodeType { found: cur.to_owned() })
+        }
+    }
+
     pub fn find_scope(&mut self) -> &mut Program {
         let mut scope: &Program = &self.ast;
         while let Some(a) = find_scope_from_program(scope) {scope = a}
@@ -62,6 +68,17 @@ impl Parser {
         let mut scope: &Program = &self.ast;
         while let Some(a) = find_scope_from_program(scope) {scope = a}
         scope == &self.ast
+    }
+
+    pub fn is_in_loop(&self) -> bool {
+        let mut scope: &Program = &self.ast;
+        while let Some(a) = find_scope_from_program(scope) {
+            if let Some(_) = find_loop(a) {
+                return true
+            }
+            scope = a;
+        }
+        false
     }
 
     pub fn find_branch_block(&mut self) -> &mut Node {
@@ -76,6 +93,24 @@ fn find_branch(p: &Program) -> Option<&Node> {
     for el in p.body.iter().rev() {
         match el {
             Node::Branch { cond: _, body:_ } => {
+                last = Some(&el);
+                break;
+            }
+            _ => (),
+        }
+    };
+    last
+}
+
+fn find_loop(p: &Program) -> Option<&Node> {
+    let mut last: Option<&Node> = None;
+    for el in p.body.iter().rev() {
+        match el {
+            Node::While { cond: _, body:_ } => {
+                last = Some(&el);
+                break;
+            },
+            Node::For { loopv: _, from: _, to: _, body: _ } => {
                 last = Some(&el);
                 break;
             }

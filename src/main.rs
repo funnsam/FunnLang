@@ -91,9 +91,7 @@ fn main() {
     let mut files = vec![args.input_file];
     let tok = preprocess(&mut lex, &mut srcs, &mut files, &mut 1, &target);
     let ast = generate_ast(&tok);
-    if ast.err.errors.len() == 0 {
-        println!("{:#?}", ast.ast);
-    } else {
+    if ast.err.errors.len() != 0 {
         println!("{}", ast.err.as_string(srcs, files));
         return
     }

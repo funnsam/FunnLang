@@ -135,10 +135,12 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
                         )
                     },
                     "break" => {
+                        p.expect_in_loop(&Node::Break);
                         p.expect_semicolon();
                         p.add_node(Node::Break)
                     },
                     "continue" => {
+                        p.expect_in_loop(&Node::Continue);
                         p.expect_semicolon();
                         p.add_node(Node::Continue)
                     },
