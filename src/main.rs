@@ -32,7 +32,7 @@ struct Args {
     #[arg(value_name="Input file")]
     input_file: String,
 
-    #[arg(short, long, default_value="urcl")]
+    #[arg(short, long, default_value="auto")]
     target: String,
 
     #[arg(short, long, default_value="out.s", value_name="Output file")]
@@ -50,21 +50,17 @@ impl CompilerTarget {
     pub fn from_string(str: &str) -> Option<Self> {
         use CompilerTarget::*;
         match str.to_ascii_lowercase().as_str() {
-            "urcl" => {
-                Some(URCL)
-            }
-            "rv64" | "riscv" => {
-                Some(RV64)
-            }
-            "aa64" | "arm" | "aarch64" => {
-                Some(AA64)
-            }
-            "x86" | "x86_64" | "x64" => {
-                Some(X64)
-            }
-            _ => {
-                None
-            }
+            "urcl"
+                => Some(URCL),
+            "rv64" | "riscv" | "riscv64"
+                => Some(RV64),
+            "aa64" | "arm" | "aarch64"
+                => Some(AA64),
+            "x86" | "x86_64" | "x64"
+                => Some(X64),
+            "auto"
+                => CompilerTarget::from_string(std::env::consts::ARCH),
+            _   => None
         }
     }
     pub fn to_str(&self) -> &str {
