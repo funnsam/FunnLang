@@ -16,7 +16,7 @@ impl Scanner {
             buf     : Buffer::new(src),
             toks    : Vec::new(),
             start   : usize::MAX,
-            at_line : 1
+            at_line : 0
         }
     }
     #[inline]

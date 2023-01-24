@@ -55,7 +55,7 @@ pub fn lex(s: &mut Scanner, file: usize) -> Buffer<Token> {
                         while let Some(t) = s.next() {
                             match t {
                                 '\n' => {
-                                    s.skip();
+                                    s.create(LF(s.at_line, file));
                                     break
                                 },
                                 _ => ()
@@ -68,7 +68,7 @@ pub fn lex(s: &mut Scanner, file: usize) -> Buffer<Token> {
                                 '*' => {
                                     match s.next().unwrap() {
                                         '/' => {
-                                            s.skip();
+                                            s.create(LF(s.at_line, file));
                                             break
                                         }
                                         _ => ()
