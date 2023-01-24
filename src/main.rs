@@ -102,13 +102,3 @@ pub fn to_mut_ptr<T>(a: &T) -> &mut T {
         &mut *(a as *const T as *mut T)
     }
 }
-pub fn asm_gen<T: codegem::arch::Instr>(vcode: &mut codegem::arch::VCode<T>, file: &mut std::fs::File) {
-    vcode.allocate_regs::<RegAlloc>();
-    match vcode.emit_assembly(file) {
-        Ok(_) => (),
-        Err(err) => {
-            println!("\x1b[1;31merror: error while emitting assembly code, reason: {}.\x1b[0m", err);
-            exit(1)
-        }
-    }
-}

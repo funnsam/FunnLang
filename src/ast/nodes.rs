@@ -1,5 +1,3 @@
-use codegem::ir::{Type as IRType, Linkage};
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
     pub body: Vec<Node>,
@@ -13,13 +11,6 @@ pub enum InternLinkage {
 }
 
 impl InternLinkage {
-    pub fn to_ir_linkage(&self) -> Linkage {
-        match self {
-            Self::Public    => Linkage::Public,
-            Self::Private   => Linkage::Private,
-            Self::Extern    => Linkage::External
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -78,34 +69,6 @@ pub enum Type {
 }
 
 impl Type {
-    pub fn to_ir_type(self) -> IRType {
-        match self {
-            Type::Name(n) => {
-                match n.as_str() {
-                    "i8"    => IRType::Integer(true, 8),
-                    "i16"   => IRType::Integer(true, 16),
-                    "i32"   => IRType::Integer(true, 32),
-                    "i64"   => IRType::Integer(true, 64),
-
-                    "u8"    => IRType::Integer(false, 8),
-                    "u16"   => IRType::Integer(false, 16),
-                    "u32"   => IRType::Integer(false, 32),
-                    "u64"   => IRType::Integer(false, 64),
-
-                    "int"   => IRType::Integer(true, 64),
-                    "uint"  => IRType::Integer(false, 64),
-
-                    "void"  => IRType::Void,
-                    _ => todo!("Unimplimented type.")
-                }
-            },
-            Type::Pointer(_t) => {
-                // IRType::Pointer(t)
-                IRType::Void
-            },
-            _ => todo!("Unimplimented type.")
-        }
-    }
 }
 
 
