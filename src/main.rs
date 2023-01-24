@@ -16,14 +16,10 @@ mod compiler;
 
 use std::process::exit;
 
-use codegem::regalloc::RegAlloc;
-use codegem::arch::{urcl::UrclSelector, rv64::RvSelector, x64::X64Selector};
 use scanner::*;
 use lexer::*;
 use preprocess::*;
 use ast::*;
-
-use codegem_aarch64::AA64Selector;
 
 use clap::Parser;
 
@@ -96,27 +92,9 @@ fn main() {
         return
     }
     let mut file = std::fs::File::create(args.output).unwrap();
-    let ir = compiler::ast_compiler::compiler(ast.ast);
-    println!("{}", ir);
 
-    use CompilerTarget::*;
     match target {
-            URCL => {
-            let mut vcode = ir.lower_to_vcode::<_, UrclSelector>();
-            asm_gen(&mut vcode, &mut file)
-        },
-        RV64 => {
-            let mut vcode = ir.lower_to_vcode::<_, RvSelector>();
-            asm_gen(&mut vcode, &mut file)
-        },
-        AA64 => {
-            let mut vcode = ir.lower_to_vcode::<_, AA64Selector>();
-            asm_gen(&mut vcode, &mut file)
-        },
-        X64  => {
-            let mut vcode = ir.lower_to_vcode::<_, X64Selector>();
-            asm_gen(&mut vcode, &mut file)
-        }
+        _ => todo!()
     }
 }
 pub fn to_mut_ptr<T>(a: &T) -> &mut T {
