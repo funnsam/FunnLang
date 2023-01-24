@@ -1,19 +1,2 @@
-func pub main() u8 {
-    asdf()
-    // adupfuf
-    /*
-    a
-    aa
-    a
-    a
-    a
-    a
-    a
-    a
-    a
-    */
-    asm asm ""
-    // abc
-
-
+func pub main() int {
 }

@@ -10,7 +10,16 @@ pub enum InternLinkage {
     Extern
 }
 
+use inkwell::module::Linkage;
+
 impl InternLinkage {
+    pub fn as_inkwell_linkage(&self) -> Linkage {
+        match self {
+            Self::Public    => Linkage::AvailableExternally,
+            Self::Private   => Linkage::Private,
+            Self::Extern    => Linkage::External
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

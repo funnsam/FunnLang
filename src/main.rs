@@ -14,8 +14,9 @@ mod ast;
 
 mod compiler;
 
-use std::process::exit;
+use std::{process::exit, path::Path};
 
+use crate::compiler::ast_compiler::CodeGen;
 use scanner::*;
 use lexer::*;
 use preprocess::*;
@@ -31,12 +32,11 @@ struct Args {
     #[arg(short, long, default_value="auto")]
     target: String,
 
-    #[arg(short, long, default_value="out.s", value_name="Output file")]
+    #[arg(short, long, default_value="out.o", value_name="Output file")]
     output: String
 }
 
 pub enum CompilerTarget {
-    URCL,
     RV64,
     AA64,
     X64,
@@ -46,8 +46,6 @@ impl CompilerTarget {
     pub fn from_string(str: &str) -> Option<Self> {
         use CompilerTarget::*;
         match str.to_ascii_lowercase().as_str() {
-            "urcl"
-                => Some(URCL),
             "rv64" | "riscv" | "riscv64"
                 => Some(RV64),
             "aa64" | "arm" | "aarch64"
@@ -62,7 +60,6 @@ impl CompilerTarget {
     pub fn to_str(&self) -> &str {
         use CompilerTarget::*;
         match self {
-            URCL => "urcl",
             RV64 => "rv64",
             AA64 => "aa64",
             X64  => "x64"
@@ -91,11 +88,8 @@ fn main() {
         println!("{}", ast.err.as_string(srcs, files));
         return
     }
-    let mut file = std::fs::File::create(args.output).unwrap();
 
-    match target {
-        _ => todo!()
-    }
+    CodeGen::compile(&ast.ast, Path::new(&args.output));
 }
 pub fn to_mut_ptr<T>(a: &T) -> &mut T {
     unsafe {

@@ -14,12 +14,12 @@ ifeq ($(OS), Windows_NT)
 endif
 
 build:
-	cargo build -r
+	cargo build -r -j128
 	-rm $(TNAME) -f
 	-cp $(DNAME) .
 
 debug:
-	cargo build
+	cargo build -j128
 	-rm $(TNAME) -f
 	-cp $(DDNAME) .
 
