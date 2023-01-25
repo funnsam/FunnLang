@@ -1,3 +1,8 @@
+func smth() void {
+    return;
+}
+
 func pub main() int {
+    smth();
     return 0;
 }

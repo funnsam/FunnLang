@@ -58,10 +58,29 @@ impl Parser {
         }
     }
 
+    pub fn expect_fn_with_ret(&mut self) {
+        if self.depth() != 1 {
+            return
+        }
+
+        if matches!(self.ast.body.last().unwrap(), Node::FuncDefine { func_name: _, func_args: _, func_type: _, func_body: _, linkage: _ }) {
+            if !matches!(self.find_scope().body.last().unwrap_or(&Node::Break), Node::Return(_)) {
+                self.error(ErrorKind::NoReturn)
+            }
+        }
+    }
+
     pub fn find_scope(&mut self) -> &mut Program {
         let mut scope: &Program = &self.ast;
         while let Some(a) = find_scope_from_program(scope) {scope = a}
         to_mut_ptr(scope)
+    }
+
+    pub fn depth(&self) -> usize {
+        let mut depth = 0;
+        let mut scope: &Program = &self.ast;
+        while let Some(a) = find_scope_from_program(scope) {depth += 1; scope=a}
+        depth
     }
 
     pub fn is_at_root(&self) -> bool {

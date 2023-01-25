@@ -247,6 +247,7 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
                 if p.is_at_root() {
                     p.error(ErrorKind::UnexpectedToken { found: t.kind })
                 } else {
+                    p.expect_fn_with_ret();
                     p.find_scope().escaped = true
                 }
             },

@@ -5,11 +5,8 @@ use inkwell::OptimizationLevel;
 use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::builder::Builder;
-use inkwell::values::FunctionValue;
-use inkwell::values::IntValue;
-use inkwell::values::PointerValue;
-use inkwell::types::IntType;
-use inkwell::types::BasicMetadataTypeEnum;
+use inkwell::values::*;
+use inkwell::types::*;
 use inkwell::targets::*;
 
 use crate::ast::nodes::Expr;
@@ -65,11 +62,15 @@ impl<'ctx> CodeGen<'ctx> {
         target_machine.write_to_file(&self.module, *filetype, path).unwrap();
     }
 
+    fn as_fn_type(ret: &AnyTypeEnum, args: &Vec<BasicMetadataTypeEnum>) -> FunctionValue<'ctx> {
+        todo!()
+    }
+
     fn compile_ast(&mut self, ast: &Program) {
         for statement in &ast.body {
             match statement {
                 Node::FuncDefine { func_name, func_args, func_type, func_body, linkage } => {
-                    let ty = self.as_llvm_type(func_type).fn_type(&self.args_to_metadata(func_args), false);
+                    let ty = Self::as_fn_type(&self.as_llvm_type(func_type), &self.args_to_metadata(func_args));
                     let func = self.module.add_function(func_name, ty, linkage.as_inkwell_linkage());
 
                     self.cur_fn = Some(func);
@@ -92,6 +93,15 @@ impl<'ctx> CodeGen<'ctx> {
                         }
                     };
                 },
+                Node::FuncCall { func_name, func_args } => {
+                    let func = self.module.get_function(func_name).unwrap();
+                    let mut args = Vec::with_capacity(func_args.len());
+                    for i in func_args {
+                        let expr = self.compile_expr(i);
+                        args.push(BasicMetadataValueEnum::IntValue(expr));
+                    }
+                    self.builder.build_call(func, args.as_slice(), func_name);
+                },
                 _ => todo!()
             }
         }
@@ -104,11 +114,12 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    fn as_llvm_type(&mut self, typ: &Type) -> IntType<'ctx> {
+    fn as_llvm_type(&mut self, typ: &Type) -> AnyTypeEnum<'ctx> {
         match typ {
             Type::Name(v) => {
                 match v.as_str() {
-                    "int" | "i32" => self.context.i32_type(),
+                    "void" => AnyTypeEnum::VoidType(self.context.void_type()),
+                    "int" | "i32" => AnyTypeEnum::IntType(self.context.i32_type()),
                     _ => panic!()
                 }
             }
@@ -116,14 +127,12 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    fn args_to_metadata(&mut self, args: &Vec<FuncDefArg>) -> Vec<BasicMetadataTypeEnum<'ctx>> {
+    fn args_to_metadata(&mut self, args: &Vec<FuncDefArg>) -> Vec<AnyTypeEnum<'ctx>> {
         let mut ret = Vec::new();
         for typ in args {
             match typ.clone().typ {
                 Type::Name(n) => {
-                    if n.contains("int") {
-                        ret.push(BasicMetadataTypeEnum::IntType(self.as_llvm_type(&(*typ).clone().typ)));
-                    }
+                    ret.push(self.as_llvm_type(&(*typ).clone().typ));
                 }
                 _ => todo!()
             }
