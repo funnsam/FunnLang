@@ -17,6 +17,7 @@ mod compiler;
 use std::{process::exit, path::Path};
 
 use crate::compiler::ast_compiler::CodeGen;
+use inkwell::targets::FileType;
 use scanner::*;
 use lexer::*;
 use preprocess::*;
@@ -33,7 +34,10 @@ struct Args {
     target: String,
 
     #[arg(short, long, default_value="out.o", value_name="Output file")]
-    output: String
+    output: String,
+
+    #[arg(long, default_value="object")]
+    format: String,
 }
 
 pub enum CompilerTarget {
@@ -76,6 +80,15 @@ fn main() {
             exit(1)
         }
     };
+
+    let format = match args.format.as_str() {
+        "object" => FileType::Object,
+        "asm" | "assembly" => FileType::Assembly,
+        _ => {
+            println!("\x1b[1;31merror:\x1b[0m unsupported output format '{}' had been specified\x1b[0m", args.format);
+            exit(1)
+        }
+    };
     
     let src = std::fs::read_to_string(args.input_file.clone()).expect("F");
     
@@ -89,7 +102,7 @@ fn main() {
         return
     }
 
-    CodeGen::compile(&ast.ast, Path::new(&args.output));
+    CodeGen::compile(&ast.ast, Path::new(&args.output), &format);
 }
 pub fn to_mut_ptr<T>(a: &T) -> &mut T {
     unsafe {

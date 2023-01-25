@@ -14,6 +14,7 @@ pub enum ErrorKind {
         found: TokenKind
     },
     MathError,
+    NoReturn
 }
 
 #[allow(dead_code)]
@@ -35,6 +36,8 @@ impl std::fmt::Display for ErrorKind {
                 => write!(f, "unexpected token {}", found),
             MathError
                 => write!(f, "math error"),
+            NoReturn
+                => write!(f, "no return found")
         }
     }
 }

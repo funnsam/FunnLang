@@ -5,3 +5,4 @@ funnlang
 *.s
 *.urcl
 *.exe
+*.o

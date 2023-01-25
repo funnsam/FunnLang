@@ -13,11 +13,11 @@ pub enum InternLinkage {
 use inkwell::module::Linkage;
 
 impl InternLinkage {
-    pub fn as_inkwell_linkage(&self) -> Linkage {
+    pub fn as_inkwell_linkage(&self) -> Option<Linkage> {
         match self {
-            Self::Public    => Linkage::AvailableExternally,
-            Self::Private   => Linkage::Private,
-            Self::Extern    => Linkage::External
+            Self::Public    => None,
+            Self::Private   => Some(Linkage::Private),
+            Self::Extern    => Some(Linkage::External)
         }
     }
 }
