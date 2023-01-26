@@ -19,7 +19,7 @@ pub struct CodeGen<'ctx> {
     module: Module<'ctx>,
     builder: Builder<'ctx>,
     cur_fn: Option<FunctionValue<'ctx>>,
-    cur_vars: HashMap<String, PointerValue<'ctx>>
+    vars: Vec<HashMap<String, PointerValue<'ctx>>>
 }
 
 impl<'ctx> CodeGen<'ctx> {
@@ -31,7 +31,7 @@ impl<'ctx> CodeGen<'ctx> {
             module,
             builder : context.create_builder(),
             cur_fn  : None,
-            cur_vars: HashMap::new(),
+            vars: Vec::new(),
         };
         
         codegen.compile_ast(ast);
@@ -54,7 +54,7 @@ impl<'ctx> CodeGen<'ctx> {
                 cpu.to_str().unwrap(), 
                 features.to_str().unwrap(), 
                 opt, 
-                reloc, 
+                reloc,
                 model
             )
             .unwrap();
@@ -77,6 +77,7 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     fn compile_ast(&mut self, ast: &Program) {
+        self.vars.push(self.vars.last().unwrap_or(&HashMap::new()).clone());
         for statement in &ast.body {
             match statement {
                 Node::FuncDefine { func_name, func_args, func_type, func_body, linkage } => {
@@ -84,11 +85,14 @@ impl<'ctx> CodeGen<'ctx> {
                     let func = self.module.add_function(func_name, ty, linkage.as_inkwell_linkage());
 
                     self.cur_fn = Some(func);
+                    let alloca_entry = self.context.append_basic_block(func, "alloca_entry");
+                    let entry = self.context.append_basic_block(func, "fn_entry");
 
-                    let entry = self.context.append_basic_block(func, "entry");
                     self.builder.position_at_end(entry);
-
                     self.compile_ast(func_body);
+
+                    self.builder.position_at_end(alloca_entry);
+                    self.builder.build_unconditional_branch(entry);
 
                     self.cur_fn = None;
                 },
@@ -112,14 +116,32 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                     self.builder.build_call(func, args.as_slice(), func_name);
                 },
+                Node::VarDefine { var_type, var_name, val_expr } => {
+                    let typ = self.as_llvm_type(var_type);
+
+                    let alloca_entry = self.cur_fn.unwrap().get_first_basic_block().unwrap();
+                    self.builder.position_at_end(alloca_entry);
+                    let alloca = self.builder.build_alloca(BasicTypeEnum::try_from(typ).unwrap(), "buildvar");
+
+                    self.vars.last_mut().unwrap().insert(var_name.to_owned(), alloca);
+
+                    self.builder.position_at_end(self.cur_fn.unwrap().get_last_basic_block().unwrap());
+                    let val = self.compile_expr(val_expr);
+                    self.builder.build_store(alloca, val);
+                }
                 _ => todo!()
             }
         }
+        self.vars.pop();
     }
 
     fn compile_expr(&mut self, expr: &Expr) -> IntValue<'ctx> {
         match expr {
             Expr::Number(v) => self.context.i64_type().const_int(*v as u64, false),
+            Expr::Ident(v) => {
+                let var = self.vars.last().unwrap().get(v).unwrap();
+                self.builder.build_load(*var, "loadvar").into_int_value()
+            }
             _ => todo!()
         }
     }

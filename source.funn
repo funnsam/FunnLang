@@ -3,6 +3,7 @@ func smth() void {
 }
 
 func pub main() int {
+    var a int = 1;
     smth();
-    return 0;
+    return a;
 }
