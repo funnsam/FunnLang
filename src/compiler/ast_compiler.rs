@@ -62,7 +62,7 @@ impl<'ctx> CodeGen<'ctx> {
         target_machine.write_to_file(&self.module, *filetype, path).unwrap();
     }
 
-    fn as_fn_type(ret: &AnyTypeEnum, args: &Vec<BasicMetadataTypeEnum>) -> FunctionValue<'ctx> {
+    fn as_fn_type(ret: &AnyTypeEnum, args: &Vec<AnyTypeEnum>) -> FunctionType<'ctx> {
         todo!()
     }
 
