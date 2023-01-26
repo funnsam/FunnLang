@@ -117,17 +117,15 @@ impl<'ctx> CodeGen<'ctx> {
                     self.builder.build_call(func, args.as_slice(), func_name);
                 },
                 Node::VarDefine { var_type, var_name, val_expr } => {
-                    let typ = self.as_llvm_type(var_type);
-
-                    let alloca_entry = self.cur_fn.unwrap().get_first_basic_block().unwrap();
-                    self.builder.position_at_end(alloca_entry);
-                    let alloca = self.builder.build_alloca(BasicTypeEnum::try_from(typ).unwrap(), "buildvar");
-
+                    self.builder.position_at_end(self.cur_fn.unwrap().get_first_basic_block().unwrap());
+                    let alloca = self.builder.build_alloca(
+                        BasicTypeEnum::try_from(self.as_llvm_type(var_type)).unwrap(),
+                        &format!("build_var_{var_name}")
+                    );
                     self.vars.last_mut().unwrap().insert(var_name.to_owned(), alloca);
 
                     self.builder.position_at_end(self.cur_fn.unwrap().get_last_basic_block().unwrap());
-                    let val = self.compile_expr(val_expr);
-                    self.builder.build_store(alloca, val);
+                    self.builder.build_store(alloca, self.compile_expr(val_expr));
                 }
                 _ => todo!()
             }
