@@ -62,15 +62,25 @@ impl<'ctx> CodeGen<'ctx> {
         target_machine.write_to_file(&self.module, *filetype, path).unwrap();
     }
 
-    fn as_fn_type(ret: &AnyTypeEnum, args: &Vec<AnyTypeEnum>) -> FunctionType<'ctx> {
-        todo!()
+    fn as_fn_type(ret: AnyTypeEnum<'ctx>, args: Vec<BasicMetadataTypeEnum<'ctx>>) -> FunctionType<'ctx> {
+        match BasicTypeEnum::try_from(ret) {
+            Ok(v) => v.fn_type(&args, false),
+            Err(_) => {
+                match ret {
+                    AnyTypeEnum::VoidType(v) => v.fn_type(&args, false),
+                    AnyTypeEnum::ArrayType(_) | AnyTypeEnum::FloatType(_) | AnyTypeEnum::IntType(_) | AnyTypeEnum::PointerType(_) |
+                    AnyTypeEnum::StructType(_) | AnyTypeEnum::VectorType(_) => unreachable!(),
+                    _ => todo!()
+                }
+            }
+        }
     }
 
     fn compile_ast(&mut self, ast: &Program) {
         for statement in &ast.body {
             match statement {
                 Node::FuncDefine { func_name, func_args, func_type, func_body, linkage } => {
-                    let ty = Self::as_fn_type(&self.as_llvm_type(func_type), &self.args_to_metadata(func_args));
+                    let ty = Self::as_fn_type(self.as_llvm_type(func_type), self.args_to_metadata(func_args));
                     let func = self.module.add_function(func_name, ty, linkage.as_inkwell_linkage());
 
                     self.cur_fn = Some(func);
@@ -127,12 +137,12 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    fn args_to_metadata(&mut self, args: &Vec<FuncDefArg>) -> Vec<AnyTypeEnum<'ctx>> {
+    fn args_to_metadata(&mut self, args: &Vec<FuncDefArg>) -> Vec<BasicMetadataTypeEnum<'ctx>> {
         let mut ret = Vec::new();
         for typ in args {
             match typ.clone().typ {
                 Type::Name(n) => {
-                    ret.push(self.as_llvm_type(&(*typ).clone().typ));
+                    ret.push(BasicMetadataTypeEnum::try_from(self.as_llvm_type(&(*typ).clone().typ)).unwrap());
                 }
                 _ => todo!()
             }
