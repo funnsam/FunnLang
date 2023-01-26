@@ -23,7 +23,7 @@ pub struct CodeGen<'ctx> {
 }
 
 impl<'ctx> CodeGen<'ctx> {
-    pub fn compile(ast: &Program, path: &Path, filetype: &FileType) {
+    pub fn compile(ast: &Program, path: &Path, filetype: &FileType, emit_ir: bool) {
         let context = Context::create();
         let module  = context.create_module("FunnLang");
         let mut codegen = CodeGen {
@@ -37,6 +37,10 @@ impl<'ctx> CodeGen<'ctx> {
         codegen.compile_ast(ast);
 
         codegen.write(path, filetype);
+
+        if emit_ir {
+            codegen.module.print_to_stderr();
+        }
     }
 
     pub fn write(&self, path: &Path, filetype: &FileType) {
@@ -85,8 +89,8 @@ impl<'ctx> CodeGen<'ctx> {
                     let func = self.module.add_function(func_name, ty, linkage.as_inkwell_linkage());
 
                     self.cur_fn = Some(func);
-                    let alloca_entry = self.context.append_basic_block(func, "alloca_entry");
-                    let entry = self.context.append_basic_block(func, "fn_entry");
+                    let alloca_entry = self.context.append_basic_block(func, "__var_allocs");
+                    let entry = self.context.append_basic_block(func, "__entry");
 
                     self.builder.position_at_end(entry);
                     self.compile_ast(func_body);
@@ -117,15 +121,16 @@ impl<'ctx> CodeGen<'ctx> {
                     self.builder.build_call(func, args.as_slice(), func_name);
                 },
                 Node::VarDefine { var_type, var_name, val_expr } => {
-                    self.builder.position_at_end(self.cur_fn.unwrap().get_first_basic_block().unwrap());
+                    let alloca_entry = self.cur_fn.unwrap().get_first_basic_block();
+                    self.builder.position_at_end(alloca_entry.unwrap());
                     let alloca = self.builder.build_alloca(
                         BasicTypeEnum::try_from(self.as_llvm_type(var_type)).unwrap(),
-                        &format!("build_var_{var_name}")
+                        &format!("var_{var_name}")
                     );
                     self.vars.last_mut().unwrap().insert(var_name.to_owned(), alloca);
-
                     self.builder.position_at_end(self.cur_fn.unwrap().get_last_basic_block().unwrap());
-                    self.builder.build_store(alloca, self.compile_expr(val_expr));
+                    let val = self.compile_expr(val_expr);
+                    self.builder.build_store(alloca, val);
                 }
                 _ => todo!()
             }
@@ -138,13 +143,13 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::Number(v) => self.context.i64_type().const_int(*v as u64, false),
             Expr::Ident(v) => {
                 let var = self.vars.last().unwrap().get(v).unwrap();
-                self.builder.build_load(*var, "loadvar").into_int_value()
+                self.builder.build_load(self.context.i64_type(), *var, &format!("load_{v}")).into_int_value()
             }
             _ => todo!()
         }
     }
 
-    fn as_llvm_type(&mut self, typ: &Type) -> AnyTypeEnum<'ctx> {
+    fn as_llvm_type(&self, typ: &Type) -> AnyTypeEnum<'ctx> {
         match typ {
             Type::Name(v) => {
                 match v.as_str() {

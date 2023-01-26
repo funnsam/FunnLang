@@ -23,21 +23,24 @@ use lexer::*;
 use preprocess::*;
 use ast::*;
 
-use clap::Parser;
+use clap::{ArgAction, Parser};
 
 #[derive(Parser)]
 struct Args {
-    #[arg(value_name="Input file")]
+    #[clap(value_name="Input file")]
     input_file: String,
 
-    #[arg(short, long, default_value="auto")]
+    #[clap(short, long, default_value="auto")]
     target: String,
 
-    #[arg(short, long, default_value="out.o", value_name="Output file")]
+    #[clap(short, long, default_value="out.o", value_name="Output file")]
     output: String,
 
-    #[arg(long, default_value="object")]
+    #[clap(long, default_value="object")]
     format: String,
+
+    #[clap(long="emit-ir", value_name="Emit IR", default_value="false", action=ArgAction::Set)]
+    emit_ir: bool,
 }
 
 pub enum CompilerTarget {
@@ -102,7 +105,7 @@ fn main() {
         return
     }
 
-    CodeGen::compile(&ast.ast, Path::new(&args.output), &format);
+    CodeGen::compile(&ast.ast, Path::new(&args.output), &format, args.emit_ir);
 }
 pub fn to_mut_ptr<T>(a: &T) -> &mut T {
     unsafe {
