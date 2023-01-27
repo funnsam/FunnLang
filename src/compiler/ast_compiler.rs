@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::collections::HashMap;
 
+use inkwell::*;
 use inkwell::OptimizationLevel;
 use inkwell::context::Context;
 use inkwell::module::Module;
@@ -10,11 +11,7 @@ use inkwell::types::*;
 use inkwell::targets::*;
 
 use crate::CompilerTarget;
-use crate::ast::nodes::BiOp;
-use crate::ast::nodes::Expr;
-use crate::ast::nodes::FuncDefArg;
-use crate::ast::nodes::Type;
-use crate::ast::nodes::{Program, Node};
+use crate::ast::nodes::*;
 
 pub struct CodeGen<'ctx> {
     context: &'ctx Context,
@@ -148,6 +145,22 @@ impl<'ctx> CodeGen<'ctx> {
                     let val = self.compile_expr(val_expr, &self.vars.last().unwrap()[var_name].1.try_into().unwrap());
                     self.builder.build_store(self.vars.last().unwrap()[var_name].0, val);
                 },
+                Node::While { cond, body } => {
+                    let cond_blk = self.context.append_basic_block(self.cur_fn.unwrap(), "__while_cond_blk");
+                    let body_blk = self.context.append_basic_block(self.cur_fn.unwrap(), "__while_body_blk");
+                    let end_blk  = self.context.append_basic_block(self.cur_fn.unwrap(), "__while_end_blk");
+                    self.builder.build_unconditional_branch(cond_blk);
+                    
+                    self.builder.position_at_end(cond_blk);
+                    let cond = self.compile_expr(cond, &self.context.i32_type().try_into().unwrap());
+                    self.builder.build_conditional_branch(cond, body_blk, end_blk);
+                    
+                    self.builder.position_at_end(body_blk);
+                    self.compile_ast(body);
+                    self.builder.build_unconditional_branch(cond_blk);
+
+                    self.builder.position_at_end(end_blk);
+                }
                 _ => todo!()
             }
         }
@@ -177,6 +190,18 @@ impl<'ctx> CodeGen<'ctx> {
                     BiOp::RSh => self.builder.build_right_shift(lhs, rhs, false, "rsh")
                 }
             },
+            Expr::CompOp { left, oper, right } => {
+                let lhs = self.compile_expr(left, prefer);
+                let rhs = self.compile_expr(right, prefer);
+                self.builder.build_int_compare(match oper {
+                    CompOp::EQ  => IntPredicate::EQ,
+                    CompOp::NEQ => IntPredicate::NE,
+                    CompOp::LT  => IntPredicate::ULT,
+                    CompOp::LTE => IntPredicate::ULE,
+                    CompOp::GT  => IntPredicate::UGT,
+                    CompOp::GTE => IntPredicate::UGE,
+                }, lhs, rhs, "eq")
+            }
             Expr::Cast { typ, val } => {
                 let val = self.compile_expr(val, prefer);
                 let typ = self.as_llvm_type(typ);

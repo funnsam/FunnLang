@@ -1,10 +1,7 @@
-func smth() void {
-    return;
-}
-
 func pub main() int {
-    var a i8 = 1;
-    smth();
-    a = 0;
+    var a i8 = 10;
+    while (a != 0) {
+        a = a - 1;
+    }
     return a -> int;
 }
