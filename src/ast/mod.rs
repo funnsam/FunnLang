@@ -329,7 +329,7 @@ fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
     enum ExprTmp {
         Number(i64),
         Ident(String),
-        BoolOp(BoolOp),
+        BoolOp(BiOp),
         UnaryOp(UnaryOp),
         CompOp(CompOp),
         Expr(Expr),
@@ -340,7 +340,7 @@ fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
         match a {
             ExprTmp::UnaryOp(_) => 5,
             ExprTmp::BoolOp(op) => {
-                use BoolOp::*;
+                use BiOp::*;
                 match op {
                     Add | Sub => 1,
                     Mul | Div | Mod => 2,
@@ -385,9 +385,9 @@ fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
                 if !is_unary {
                     ExprTmp::BoolOp(
                         match el.str.as_str() {
-                            "+" => BoolOp::Add, "-" => BoolOp::Sub, "*" => BoolOp::Mul, "/" => BoolOp::Div,
-                            "%" => BoolOp::Mod,
-                            "&" => BoolOp::And, "|" => BoolOp::Or , "^" => BoolOp::XOr, "<<" => BoolOp::LSh, ">>" => BoolOp::RSh,
+                            "+" => BiOp::Add, "-" => BiOp::Sub, "*" => BiOp::Mul, "/" => BiOp::Div,
+                            "%" => BiOp::Mod,
+                            "&" => BiOp::And, "|" => BiOp::Or , "^" => BiOp::XOr, "<<" => BiOp::LSh, ">>" => BiOp::RSh,
                             _ => panic!("Bruh {:?}", el)
                         }
                     )
@@ -504,7 +504,7 @@ fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
                         Expr::Number(0)
                     }
                 };
-                tmp1.push(ExprTmp::Expr(Expr::BoolOp { left: Box::new(last_1), oper: op, right: Box::new(last_2) }))
+                tmp1.push(ExprTmp::Expr(Expr::BiOp { left: Box::new(last_1), oper: op, right: Box::new(last_2) }))
             },
             ExprTmp::UnaryOp(op) => {
                 let last = match tmp1.pop().unwrap() {

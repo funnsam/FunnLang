@@ -89,9 +89,9 @@ pub enum Expr {
         name    : String,
         args    : Vec<Expr>
     },
-    BoolOp {
+    BiOp {
         left    : Box<Expr>,
-        oper    : BoolOp,
+        oper    : BiOp,
         right   : Box<Expr>
     },
     UnaryOp {
@@ -116,7 +116,7 @@ pub enum UnaryOp {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum BoolOp {
+pub enum BiOp {
     Add, Sub, Mul, Div, Mod,
     And, Or , XOr, LSh, RSh
 }

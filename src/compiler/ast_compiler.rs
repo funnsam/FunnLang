@@ -10,6 +10,7 @@ use inkwell::types::*;
 use inkwell::targets::*;
 
 use crate::CompilerTarget;
+use crate::ast::nodes::BiOp;
 use crate::ast::nodes::Expr;
 use crate::ast::nodes::FuncDefArg;
 use crate::ast::nodes::Type;
@@ -113,7 +114,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Node::Return(val) => {
                     match val {
                         Some(val) => {
-                            let e = self.compile_expr(val);
+                            let e = self.compile_expr(val, &self.cur_fn.unwrap().get_type().get_return_type().unwrap());
                             self.builder.build_return(Some(&e));
                         },
                         None => {
@@ -124,8 +125,8 @@ impl<'ctx> CodeGen<'ctx> {
                 Node::FuncCall { func_name, func_args } => {
                     let func = self.module.get_function(func_name).unwrap();
                     let mut args = Vec::with_capacity(func_args.len());
-                    for i in func_args {
-                        let expr = self.compile_expr(i);
+                    for (i, expr) in func_args.iter().enumerate() {
+                        let expr = self.compile_expr(expr, &func.get_type().get_param_types()[i]);
                         args.push(BasicMetadataValueEnum::IntValue(expr));
                     }
                     self.builder.build_call(func, args.as_slice(), func_name);
@@ -140,25 +141,46 @@ impl<'ctx> CodeGen<'ctx> {
                     );
                     self.vars.last_mut().unwrap().insert(var_name.to_owned(), (alloca, typ));
                     self.builder.position_at_end(self.cur_fn.unwrap().get_last_basic_block().unwrap());
-                    let val = self.compile_expr(val_expr);
+                    let val = self.compile_expr(val_expr, &typ.try_into().unwrap());
                     self.builder.build_store(alloca, val);
                 },
                 Node::VarAssign { var_name, val_expr } => {
-                    let val = self.compile_expr(val_expr);
+                    let val = self.compile_expr(val_expr, &self.vars.last().unwrap()[var_name].1.try_into().unwrap());
                     self.builder.build_store(self.vars.last().unwrap()[var_name].0, val);
-                }
+                },
                 _ => todo!()
             }
         }
         self.vars.pop();
     }
 
-    fn compile_expr(&mut self, expr: &Expr) -> IntValue<'ctx> {
+    fn compile_expr(&mut self, expr: &Expr, prefer: &BasicTypeEnum<'ctx>) -> IntValue<'ctx> {
         match expr {
-            Expr::Number(v) => self.context.i32_type().const_int(*v as u64, false),
+            Expr::Number(v) => prefer.into_int_type().const_int(*v as u64, false),
             Expr::Ident(v) => {
                 let var = self.vars.last().unwrap().get(v).unwrap();
                 self.builder.build_load(BasicTypeEnum::try_from(var.1).unwrap(), var.0, &format!("load_{v}")).into_int_value()
+            },
+            Expr::BiOp { left, oper, right } => {
+                let lhs = self.compile_expr(left, prefer);
+                let rhs = self.compile_expr(right, prefer);
+                match oper {
+                    BiOp::Add => self.builder.build_int_add(lhs, rhs, "add"),
+                    BiOp::Sub => self.builder.build_int_sub(lhs, rhs, "sub"),
+                    BiOp::Mul => self.builder.build_int_mul(lhs, rhs, "mul"),
+                    BiOp::Div => self.builder.build_int_unsigned_div(lhs, rhs, "div"),
+                    BiOp::Mod => self.builder.build_int_unsigned_rem(lhs, rhs, "mod"),
+                    BiOp::And => self.builder.build_and(lhs, rhs, "and"),
+                    BiOp::Or  => self.builder.build_or(lhs, rhs, "or"),
+                    BiOp::XOr => self.builder.build_xor(lhs, rhs, "xor"),
+                    BiOp::LSh => self.builder.build_left_shift(lhs, rhs, "lsh"),
+                    BiOp::RSh => self.builder.build_right_shift(lhs, rhs, false, "rsh")
+                }
+            },
+            Expr::Cast { typ, val } => {
+                let val = self.compile_expr(val, prefer);
+                let typ = self.as_llvm_type(typ);
+                self.builder.build_cast(InstructionOpcode::BitCast, val, BasicTypeEnum::try_from(typ).unwrap(), "cast").into_int_value()
             },
             _ => todo!()
         }
@@ -168,8 +190,16 @@ impl<'ctx> CodeGen<'ctx> {
         match typ {
             Type::Name(v) => {
                 match v.as_str() {
-                    "void" => AnyTypeEnum::VoidType(self.context.void_type()),
-                    "int" | "i32" => AnyTypeEnum::IntType(self.context.i32_type()),
+                    "void"
+                        => AnyTypeEnum::VoidType(self.context.void_type()),
+                    "i8"
+                        => AnyTypeEnum::IntType(self.context.i8_type()),
+                    "i16"
+                        => AnyTypeEnum::IntType(self.context.i16_type()),
+                    "int" | "i32"
+                        => AnyTypeEnum::IntType(self.context.i32_type()),
+                    "i64"
+                        => AnyTypeEnum::IntType(self.context.i64_type()),
                     _ => panic!()
                 }
             }

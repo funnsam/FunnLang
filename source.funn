@@ -3,8 +3,8 @@ func smth() void {
 }
 
 func pub main() int {
-    var a int = 1;
+    var a i8 = 1;
     smth();
     a = 0;
-    return a;
+    return a -> int;
 }
