@@ -9,6 +9,7 @@ use inkwell::values::*;
 use inkwell::types::*;
 use inkwell::targets::*;
 
+use crate::CompilerTarget;
 use crate::ast::nodes::Expr;
 use crate::ast::nodes::FuncDefArg;
 use crate::ast::nodes::Type;
@@ -19,11 +20,20 @@ pub struct CodeGen<'ctx> {
     module: Module<'ctx>,
     builder: Builder<'ctx>,
     cur_fn: Option<FunctionValue<'ctx>>,
-    vars: Vec<HashMap<String, PointerValue<'ctx>>>
+    vars: Vec<HashMap<String, (PointerValue<'ctx>, AnyTypeEnum<'ctx>)>>
+}
+
+fn initialize(target: &CompilerTarget) {
+    match target {
+        CompilerTarget::RV64 => Target::initialize_riscv(&InitializationConfig::default()),
+        CompilerTarget::AA64 => Target::initialize_aarch64(&InitializationConfig::default()),
+        CompilerTarget::X64  => Target::initialize_x86(&InitializationConfig::default()),
+        CompilerTarget::WASM => Target::initialize_webassembly(&InitializationConfig::default())
+    }
 }
 
 impl<'ctx> CodeGen<'ctx> {
-    pub fn compile(ast: &Program, path: &Path, filetype: &FileType, emit_ir: bool) {
+    pub fn compile(ast: &Program, path: &Path, filetype: &FileType, emit_ir: bool, target: &CompilerTarget) {
         let context = Context::create();
         let module  = context.create_module("FunnLang");
         let mut codegen = CodeGen {
@@ -36,6 +46,7 @@ impl<'ctx> CodeGen<'ctx> {
         
         codegen.compile_ast(ast);
 
+        initialize(target);
         codegen.write(path, filetype);
 
         if emit_ir {
@@ -44,7 +55,6 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     pub fn write(&self, path: &Path, filetype: &FileType) {
-        Target::initialize_x86(&InitializationConfig::default());
         let triple  = TargetMachine::get_default_triple();
         let target  = Target::from_triple(&triple).unwrap();
         let cpu     = TargetMachine::get_host_cpu_name();
@@ -121,16 +131,21 @@ impl<'ctx> CodeGen<'ctx> {
                     self.builder.build_call(func, args.as_slice(), func_name);
                 },
                 Node::VarDefine { var_type, var_name, val_expr } => {
+                    let typ = self.as_llvm_type(var_type);
                     let alloca_entry = self.cur_fn.unwrap().get_first_basic_block();
                     self.builder.position_at_end(alloca_entry.unwrap());
                     let alloca = self.builder.build_alloca(
-                        BasicTypeEnum::try_from(self.as_llvm_type(var_type)).unwrap(),
+                        BasicTypeEnum::try_from(typ).unwrap(),
                         &format!("var_{var_name}")
                     );
-                    self.vars.last_mut().unwrap().insert(var_name.to_owned(), alloca);
+                    self.vars.last_mut().unwrap().insert(var_name.to_owned(), (alloca, typ));
                     self.builder.position_at_end(self.cur_fn.unwrap().get_last_basic_block().unwrap());
                     let val = self.compile_expr(val_expr);
                     self.builder.build_store(alloca, val);
+                },
+                Node::VarAssign { var_name, val_expr } => {
+                    let val = self.compile_expr(val_expr);
+                    self.builder.build_store(self.vars.last().unwrap()[var_name].0, val);
                 }
                 _ => todo!()
             }
@@ -140,11 +155,11 @@ impl<'ctx> CodeGen<'ctx> {
 
     fn compile_expr(&mut self, expr: &Expr) -> IntValue<'ctx> {
         match expr {
-            Expr::Number(v) => self.context.i64_type().const_int(*v as u64, false),
+            Expr::Number(v) => self.context.i32_type().const_int(*v as u64, false),
             Expr::Ident(v) => {
                 let var = self.vars.last().unwrap().get(v).unwrap();
-                self.builder.build_load(self.context.i64_type(), *var, &format!("load_{v}")).into_int_value()
-            }
+                self.builder.build_load(BasicTypeEnum::try_from(var.1).unwrap(), var.0, &format!("load_{v}")).into_int_value()
+            },
             _ => todo!()
         }
     }
@@ -165,12 +180,7 @@ impl<'ctx> CodeGen<'ctx> {
     fn args_to_metadata(&mut self, args: &Vec<FuncDefArg>) -> Vec<BasicMetadataTypeEnum<'ctx>> {
         let mut ret = Vec::new();
         for typ in args {
-            match typ.clone().typ {
-                Type::Name(n) => {
-                    ret.push(BasicMetadataTypeEnum::try_from(self.as_llvm_type(&(*typ).clone().typ)).unwrap());
-                }
-                _ => todo!()
-            }
+            ret.push(BasicMetadataTypeEnum::try_from(self.as_llvm_type(&(*typ).clone().typ)).unwrap());
         }
         ret
     }

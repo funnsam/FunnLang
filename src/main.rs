@@ -47,6 +47,7 @@ pub enum CompilerTarget {
     RV64,
     AA64,
     X64,
+    WASM,
 }
 
 impl CompilerTarget {
@@ -59,6 +60,8 @@ impl CompilerTarget {
                 => Some(AA64),
             "x86" | "x86_64" | "x64"
                 => Some(X64),
+            "wasm"
+                => Some(WASM),
             "auto"
                 => CompilerTarget::from_string(std::env::consts::ARCH),
             _   => None
@@ -69,7 +72,8 @@ impl CompilerTarget {
         match self {
             RV64 => "rv64",
             AA64 => "aa64",
-            X64  => "x64"
+            X64  => "x64",
+            WASM => "wasm"
         }
     }
 }
@@ -105,7 +109,7 @@ fn main() {
         return
     }
 
-    CodeGen::compile(&ast.ast, Path::new(&args.output), &format, args.emit_ir);
+    CodeGen::compile(&ast.ast, Path::new(&args.output), &format, args.emit_ir, &target);
 }
 pub fn to_mut_ptr<T>(a: &T) -> &mut T {
     unsafe {
