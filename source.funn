@@ -1,8 +1,8 @@
 @import "*std/?/io"
 
 func pub main() int {
-    for (i int: 20..10) loopdown {
-        putchar('a');
+    for (i int: 'A'..'Z') {
+        putchar(i);
     }
     return 0;
 }

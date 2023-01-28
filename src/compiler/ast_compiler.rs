@@ -176,6 +176,7 @@ impl<'ctx> CodeGen<'ctx> {
                     self.builder.position_at_end(aloc_blk);
                     let loopcounter = self.builder.build_alloca(ty, &format!("loopc_var_{loopv}"));
                     self.builder.build_store(loopcounter, from);
+                    self.vars.last_mut().unwrap().insert(loopv.to_owned(), (loopcounter, ty.as_any_type_enum()));
 
                     self.builder.build_unconditional_branch(body_blk);
                     self.builder.position_at_end(cond_blk);
