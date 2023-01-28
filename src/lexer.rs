@@ -11,7 +11,7 @@ pub fn lex(s: &mut Scanner, file: usize) -> Buffer<Token> {
                 match s.str().to_lowercase().as_str() {
                     "if"    | "else"    |
                     "var"   |
-                    "for"   | "while"   | "break"   | "continue"    |
+                    "for"   | "while"   | "break"   | "continue"    | "loopdown"    |
                     "func"  | "extern"  | "pub"     | "return"      |
                     "asm" => s.create(Keyword),
                     

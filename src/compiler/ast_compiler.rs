@@ -161,6 +161,41 @@ impl<'ctx> CodeGen<'ctx> {
 
                     self.builder.position_at_end(end_blk);
                 },
+                Node::For { loopv, ty, from, to, body, downward } => {
+                    let cond_blk = self.context.append_basic_block(self.cur_fn.unwrap(), "__for_cond_blk");
+                    let body_blk = self.context.append_basic_block(self.cur_fn.unwrap(), "__for_body_blk");
+                    let end_blk  = self.context.append_basic_block(self.cur_fn.unwrap(), "__for_end_blk");
+
+                    let ty = BasicTypeEnum::try_from(self.as_llvm_type(ty)).unwrap().to_owned();
+
+                    let loopcounter = self.builder.build_alloca(ty, &format!("loopc_var_{loopv}"));
+                    let loopok = self.builder.build_alloca(ty, &format!("loopc_tmp"));
+
+                    let tmp = self.compile_expr(from, &ty);
+                    self.builder.build_store(loopcounter, tmp);
+
+                    self.builder.build_unconditional_branch(body_blk);
+                    self.builder.position_at_end(cond_blk);
+
+                    if !downward {
+                        let lc = self.builder.build_load(ty, loopcounter, "lc_tmp");
+                        let tmp = self.builder.build_int_add(lc.into_int_value(), ty.into_int_type().const_int(1, true), "lc_inc");
+                        self.builder.build_store(loopcounter, tmp);
+
+                        let tmp = self.compile_expr(to, &ty);
+                        let tmp = self.builder.build_int_compare(IntPredicate::UGT, lc.try_into().unwrap(), tmp, "lc_cmp");
+                        self.builder.build_store(loopok, tmp);
+                    }
+
+                    let tmp = self.builder.build_load(ty, loopok, "lc_ok");
+                    self.builder.build_conditional_branch(tmp.try_into().unwrap(), body_blk, end_blk);
+
+                    self.builder.position_at_end(body_blk);
+                    self.compile_ast(body);
+                    self.builder.build_unconditional_branch(cond_blk);
+
+                    self.builder.position_at_end(end_blk);
+                }
                 Node::AsmBlock(asm) => {
                     let asm_fn = self.context.void_type().fn_type(&[], false);
                     let asm = self.context.create_inline_asm(

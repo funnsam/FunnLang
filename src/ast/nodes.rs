@@ -50,8 +50,10 @@ pub enum Node {
     },
     For {
         loopv: String,
+        ty: Type,
         from: Expr, to: Expr,
-        body: Program
+        body: Program,
+        downward: bool
     },
     Break,
     Continue,
@@ -132,23 +134,23 @@ impl std::fmt::Display for Node {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use self::Node::*;
         match self {
-            VarDefine { var_type: _, var_name: _, val_expr: _ }
+            VarDefine { .. }
                 => write!(f, "variable definition"),
-            VarAssign { var_name: _, val_expr: _ }
+            VarAssign { .. }
                 => write!(f, "set variable"),
-            FuncDefine { func_name: _, func_args: _, func_type: _, func_body: _, linkage: _ }
+            FuncDefine { .. }
                 => write!(f, "function definition"),
             FuncCall { func_name: _, func_args: _ }
                 => write!(f, "function call"),
-            While { cond: _, body: _ }
+            While { .. }
                 => write!(f, "while loop"),
-            For { loopv: _, from: _, to: _, body: _ }
+            For { .. }
                 => write!(f, "for loop"),
             Break
                 => write!(f, "break"),
             Continue
                 => write!(f, "continue"),
-            Branch { cond: _, body: _ }
+            Branch { .. }
                 => write!(f, "conditional branch"),
             CodeBlock(_)
                 => write!(f, "code block"),

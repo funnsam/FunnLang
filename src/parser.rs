@@ -111,7 +111,7 @@ fn find_branch(p: &Program) -> Option<&Node> {
     let mut last: Option<&Node> = None;
     for el in p.body.iter().rev() {
         match el {
-            Node::Branch { cond: _, body:_ } => {
+            Node::Branch { .. } => {
                 last = Some(&el);
                 break;
             }
@@ -125,11 +125,11 @@ fn find_loop(p: &Program) -> Option<&Node> {
     let mut last: Option<&Node> = None;
     for el in p.body.iter().rev() {
         match el {
-            Node::While { cond: _, body:_ } => {
+            Node::While { .. } => {
                 last = Some(&el);
                 break;
             },
-            Node::For { loopv: _, from: _, to: _, body: _ } => {
+            Node::For { .. } => {
                 last = Some(&el);
                 break;
             }
@@ -143,22 +143,22 @@ fn find_scope_from_program(p: &Program) -> Option<&Program> {
     let mut scope: Option<&Program> = None;
     'find_scope_loop: for el in p.body.iter().rev() {
         match el {
-            Node::FuncDefine { func_name: _, func_args: _, func_type: _, func_body, linkage: _ } => {
+            Node::FuncDefine { func_body, .. } => {
                 if func_body.escaped {continue;}
                 scope = Some(&func_body);
                 break;
             },
-            Node::For { loopv: _, from: _, to: _, body } => {
+            Node::For { body, .. } => {
                 if body.escaped {continue;}
                 scope = Some(&body);
                 break;
             },
-            Node::While { cond: _, body } => {
+            Node::While { body, .. } => {
                 if body.escaped {continue;}
                 scope = Some(&body);
                 break;
             },
-            Node::Branch { cond: _, body } => {
+            Node::Branch { body, .. } => {
                 for el in body.iter().rev() {
                     if el.escaped {continue;}
                     scope = Some(el);
@@ -219,7 +219,7 @@ impl ParserBuffer {
         self.buf.current()
     }
     #[inline]
-    pub fn current(&mut self) -> Option<Token> {
+    pub fn current(&self) -> Option<Token> {
         self.buf.current()
     }
 }

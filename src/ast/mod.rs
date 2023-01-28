@@ -121,16 +121,33 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
                     "for" => {
                         p.buf.advance();
                         let lv = p.buf.next().unwrap().str;
-                        p.buf.advance();
+                        let ty = parse_type_from_parser(&mut p, &vec![Colon]);
+
                         let from = parse_expr_from_parser(&mut p, &vec![To]);
                         let to = parse_expr_from_parser(&mut p, &vec![RParenthesis]);
-                        p.buf.advance();
+                        let mut downward = false;
+
+                        match p.buf.next().unwrap().kind {
+                            Keyword => {
+                                match p.buf.current().unwrap().str.as_str() {
+                                    "loopdown" => {
+                                        downward = true;
+                                        p.buf.advance();
+                                    },
+                                    _ => p.error(ErrorKind::UnexpectedToken { found: p.buf.current().unwrap().kind })
+                                }
+                            }
+                            LCurlyBracket => (),
+                            _ => unreachable!()
+                        }
+
                         p.add_node(
                             Node::For {
-                                loopv: lv,
+                                loopv: lv, ty,
                                 from,
                                 to,
-                                body : Program { body: Vec::new(), escaped: false }
+                                body : Program { body: Vec::new(), escaped: false },
+                                downward
                             }
                         )
                     },
@@ -274,7 +291,7 @@ fn parse_type_from_parser(p: &mut Parser, stop_tokens: &Vec<TokenKind>) -> Type 
 fn parse_type(toks: &mut Buffer<Token>, p: &mut Parser) -> Type{
     toks.data.reverse();
 
-    if toks.data.len() != 1 {
+    if toks.data.len() == 0 {
         todo!()
     }
 

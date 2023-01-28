@@ -33,7 +33,7 @@ impl<T: Clone + std::fmt::Debug> Buffer<T> {
         a
     }
     #[inline]
-    pub fn current(&mut self) -> Option<T> {
+    pub fn current(&self) -> Option<T> {
         if self.index >= self.data.len() {return None}
         Some(self.data[self.index].clone())
     }
