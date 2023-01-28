@@ -95,23 +95,24 @@ impl<'ctx> CodeGen<'ctx> {
                 Node::FuncDefine { func_name, func_args, func_type, func_body, linkage } => {
                     let ty = Self::as_fn_type(self.as_llvm_type(func_type), self.args_to_metadata(func_args));
                     let func = self.module.add_function(func_name, ty, linkage.as_inkwell_linkage());
-
-                    self.cur_fn = Some(func);
-                    let alloca_entry = self.context.append_basic_block(func, "__var_allocs");
-                    let entry = self.context.append_basic_block(func, "__entry");
                     
-                    self.builder.position_at_end(entry);
-                    self.compile_ast(func_body);
+                    if *linkage != InternLinkage::Extern {
+                        self.cur_fn = Some(func);
+                        let alloca_entry = self.context.append_basic_block(func, "__var_allocs");
+                        let entry = self.context.append_basic_block(func, "__entry");
                     
-                    self.builder.position_at_end(alloca_entry);
-                    self.builder.build_unconditional_branch(entry);
-                    self.cur_fn = None;
-                    self.module.print_to_stderr();
+                        self.builder.position_at_end(entry);
+                        self.compile_ast(func_body);
+                    
+                        self.builder.position_at_end(alloca_entry);
+                        self.builder.build_unconditional_branch(entry);
+                        self.cur_fn = None;
+                    }
                 },
                 Node::Return(val) => {
                     match val {
                         Some(val) => {
-                            let e = self.compile_expr(val, &self.cur_fn.unwrap().get_type().get_return_type().unwrap());
+                        let e = self.compile_expr(val, &self.cur_fn.unwrap().get_type().get_return_type().unwrap());
                             self.builder.build_return(Some(&e));
                         },
                         None => {
@@ -184,9 +185,12 @@ impl<'ctx> CodeGen<'ctx> {
                         let tmp = self.builder.build_int_add(lc.into_int_value(), ty.into_int_type().const_int(1, true), "lc_inc");
                         self.builder.build_store(loopcounter, tmp);
 
-                        self.builder.build_int_compare(IntPredicate::UGT, lc.try_into().unwrap(), to, "lc_cmp")
+                        self.builder.build_int_compare(IntPredicate::ULT, lc.try_into().unwrap(), to, "lc_cmp")
                     } else {
-                        todo!()
+                        let tmp = self.builder.build_int_sub(lc.into_int_value(), ty.into_int_type().const_int(1, true), "lc_dec");
+                        self.builder.build_store(loopcounter, tmp);
+
+                        self.builder.build_int_compare(IntPredicate::UGT, lc.try_into().unwrap(), to, "lc_cmp")
                     };
 
                     self.builder.build_conditional_branch(ok, body_blk, end_blk);
@@ -196,8 +200,6 @@ impl<'ctx> CodeGen<'ctx> {
                     self.builder.build_unconditional_branch(cond_blk);
 
                     self.builder.position_at_end(end_blk);
-
-                    self.module.print_to_stderr();
                 }
                 Node::AsmBlock(asm) => {
                     let asm_fn = self.context.void_type().fn_type(&[], false);
