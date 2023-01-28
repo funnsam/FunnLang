@@ -3,5 +3,6 @@ func pub main() int {
     while (a != 0) {
         a = a - 1;
     }
+    asm "nop";
     return a -> int;
 }

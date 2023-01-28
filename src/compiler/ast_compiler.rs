@@ -160,6 +160,19 @@ impl<'ctx> CodeGen<'ctx> {
                     self.builder.build_unconditional_branch(cond_blk);
 
                     self.builder.position_at_end(end_blk);
+                },
+                Node::AsmBlock(asm) => {
+                    let asm_fn = self.context.void_type().fn_type(&[], false);
+                    let asm = self.context.create_inline_asm(
+                        asm_fn,
+                        asm.to_owned(),
+                        "".to_owned(),
+                        true,
+                        false,
+                        None,
+                        false
+                    );
+                    self.builder.build_indirect_call(asm_fn, asm, &[], "asmblk");
                 }
                 _ => todo!()
             }
@@ -193,6 +206,10 @@ impl<'ctx> CodeGen<'ctx> {
             Expr::CompOp { left, oper, right } => {
                 let lhs = self.compile_expr(left, prefer);
                 let rhs = self.compile_expr(right, prefer);
+                let rhs = self.builder.build_cast(
+                    InstructionOpcode::BitCast, rhs, lhs.get_type(), "cmp_rhs_autocast"
+                ).into_int_value();
+
                 self.builder.build_int_compare(match oper {
                     CompOp::EQ  => IntPredicate::EQ,
                     CompOp::NEQ => IntPredicate::NE,
@@ -200,7 +217,7 @@ impl<'ctx> CodeGen<'ctx> {
                     CompOp::LTE => IntPredicate::ULE,
                     CompOp::GT  => IntPredicate::UGT,
                     CompOp::GTE => IntPredicate::UGE,
-                }, lhs, rhs, "eq")
+                }, lhs, rhs, "comparason")
             }
             Expr::Cast { typ, val } => {
                 let val = self.compile_expr(val, prefer);

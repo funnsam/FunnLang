@@ -274,6 +274,10 @@ fn parse_type_from_parser(p: &mut Parser, stop_tokens: &Vec<TokenKind>) -> Type 
 fn parse_type(toks: &mut Buffer<Token>, p: &mut Parser) -> Type{
     toks.data.reverse();
 
+    if toks.data.len() != 1 {
+        todo!()
+    }
+
     let mut tmp: Type = Type::Name(match toks.data[0].kind {
         Name => toks.data[0].str.clone(),
         _ => {
@@ -404,26 +408,27 @@ fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
             RightArrow => {
                 ExprTmp::Cast(
                     {
-                        let typ = {
-                            let mut tmp = Vec::new();
-                            let mut lvl = 0;
-                            while let Some(v) = iter.next() {
-                                match v.kind {
-                                    RParenthesis => {
-                                        lvl -= 1;
-                                        if lvl == 0 {
-                                            tmp.push(v);
-                                            break;
-                                        }
+                        let mut tmp = Vec::new();
+                        let mut lvl = 0;
+                        while let Some(v) = iter.next() {
+                            match v.kind {
+                                RParenthesis => {
+                                    lvl -= 1;
+                                    if lvl == 0 {
+                                        tmp.push(v);
+                                        break;
                                     }
-                                    LParenthesis => lvl += 1,
-                                    _ => ()
                                 }
-                                tmp.push(v)
+                                LParenthesis => lvl += 1,
+                                Name => {
+                                    tmp.push(v);
+                                    break;
+                                },
+                                _ => ()
                             }
-                            parse_type(&mut Buffer::new(tmp), p)
-                        };
-                        typ
+                            tmp.push(v)
+                        }
+                        parse_type(&mut Buffer::new(tmp), p)
                     }
                 )
             },
@@ -433,7 +438,7 @@ fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
                     "==" => EQ, "!=" => NEQ,
                     ">"  => LT, ">=" => LTE,
                     "<"  => GT, "<=" => GTE,
-                    _ => panic!()
+                    _ => unreachable!()
                 })
             },
             _ => {
@@ -542,8 +547,8 @@ fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
                     }
                 };
                 tmp1.push(ExprTmp::Expr(Expr::Cast { typ, val: Box::new(val) }))
-            }
-            ExprTmp::LParenthesis   => panic!("Bruh {:?}", el)
+            },
+            ExprTmp::LParenthesis   => p.error(ErrorKind::UnclosedBracket)
         }
     }
 
