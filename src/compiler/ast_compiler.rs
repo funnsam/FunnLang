@@ -95,15 +95,15 @@ impl<'ctx> CodeGen<'ctx> {
                 Node::FuncDefine { func_name, func_args, func_type, func_body, linkage } => {
                     let ty = Self::as_fn_type(self.as_llvm_type(func_type), self.args_to_metadata(func_args));
                     let func = self.module.add_function(func_name, ty, linkage.as_inkwell_linkage());
-                    
+
                     if *linkage != InternLinkage::Extern {
                         self.cur_fn = Some(func);
                         let alloca_entry = self.context.append_basic_block(func, "__var_allocs");
                         let entry = self.context.append_basic_block(func, "__entry");
-                    
+
                         self.builder.position_at_end(entry);
                         self.compile_ast(func_body);
-                    
+
                         self.builder.position_at_end(alloca_entry);
                         self.builder.build_unconditional_branch(entry);
                         self.cur_fn = None;
@@ -112,7 +112,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Node::Return(val) => {
                     match val {
                         Some(val) => {
-                        let e = self.compile_expr(val, &self.cur_fn.unwrap().get_type().get_return_type().unwrap());
+                            let e = self.compile_expr(val, &self.cur_fn.unwrap().get_type().get_return_type().unwrap());
                             self.builder.build_return(Some(&e));
                         },
                         None => {
