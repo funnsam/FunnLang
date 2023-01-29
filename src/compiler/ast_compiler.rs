@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 use inkwell::*;
 use inkwell::OptimizationLevel;
+use inkwell::basic_block::BasicBlock;
 use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::builder::Builder;
@@ -18,7 +19,8 @@ pub struct CodeGen<'ctx> {
     module: Module<'ctx>,
     builder: Builder<'ctx>,
     cur_fn: Option<FunctionValue<'ctx>>,
-    vars: Vec<HashMap<String, (PointerValue<'ctx>, AnyTypeEnum<'ctx>)>>
+    vars: Vec<HashMap<String, (PointerValue<'ctx>, AnyTypeEnum<'ctx>)>>,
+    loops: Vec<(BasicBlock<'ctx>, BasicBlock<'ctx>)>
 }
 
 fn initialize(target: &CompilerTarget) {
@@ -39,7 +41,8 @@ impl<'ctx> CodeGen<'ctx> {
             module,
             builder : context.create_builder(),
             cur_fn  : None,
-            vars: Vec::new(),
+            vars    : Vec::new(),
+            loops   : Vec::new()
         };
         
         codegen.compile_ast(ast);
@@ -151,6 +154,7 @@ impl<'ctx> CodeGen<'ctx> {
                     let body_blk = self.context.append_basic_block(self.cur_fn.unwrap(), "__while_body_blk");
                     let end_blk  = self.context.append_basic_block(self.cur_fn.unwrap(), "__while_end_blk");
                     self.builder.build_unconditional_branch(cond_blk);
+                    self.loops.push((cond_blk, end_blk));
                     
                     self.builder.position_at_end(cond_blk);
                     let cond = self.compile_expr(cond, &self.context.i32_type().try_into().unwrap());
@@ -161,6 +165,7 @@ impl<'ctx> CodeGen<'ctx> {
                     self.builder.build_unconditional_branch(cond_blk);
 
                     self.builder.position_at_end(end_blk);
+                    self.loops.pop();
                 },
                 Node::For { loopv, ty, from, to, body, downward } => {
                     let ty = BasicTypeEnum::try_from(self.as_llvm_type(ty)).unwrap().to_owned();
@@ -171,7 +176,8 @@ impl<'ctx> CodeGen<'ctx> {
                     let cond_blk = self.context.append_basic_block(self.cur_fn.unwrap(), "__for_cond_blk");
                     let body_blk = self.context.append_basic_block(self.cur_fn.unwrap(), "__for_body_blk");
                     let end_blk  = self.context.append_basic_block(self.cur_fn.unwrap(), "__for_end_blk");
-
+                    self.loops.push((cond_blk, end_blk));
+                    
                     self.builder.build_unconditional_branch(aloc_blk);
                     self.builder.position_at_end(aloc_blk);
                     let loopcounter = self.builder.build_alloca(ty, &format!("loopc_var_{loopv}"));
@@ -201,6 +207,7 @@ impl<'ctx> CodeGen<'ctx> {
                     self.builder.build_unconditional_branch(cond_blk);
 
                     self.builder.position_at_end(end_blk);
+                    self.loops.pop();
                 }
                 Node::AsmBlock(asm, parm) => {
                     let parm = parm.to_owned().unwrap_or(("".to_owned(), vec![]));
@@ -225,7 +232,13 @@ impl<'ctx> CodeGen<'ctx> {
                         false
                     );
                     self.builder.build_indirect_call(asm_fn, asm, exprs.as_slice(), "asmblk");
-                }
+                },
+                Node::Break => {
+                    self.builder.build_unconditional_branch(self.loops.last().unwrap().1);
+                },
+                Node::Continue => {
+                    self.builder.build_unconditional_branch(self.loops.last().unwrap().0);
+                },
                 _ => todo!()
             }
         }
