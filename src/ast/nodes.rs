@@ -62,7 +62,7 @@ pub enum Node {
         body: Vec<Program>
     },
     CodeBlock(Program),
-    AsmBlock(String, String, Option<Vec<Expr>>),
+    AsmBlock(String, Option<(String, Vec<(Type, Expr)>)>),
     Return(Option<Expr>)
 }
 
@@ -154,7 +154,7 @@ impl std::fmt::Display for Node {
                 => write!(f, "conditional branch"),
             CodeBlock(_)
                 => write!(f, "code block"),
-            AsmBlock(_)
+            AsmBlock(..)
                 => write!(f, "assembly code block"),
             Return(..)
                 => write!(f, "return")

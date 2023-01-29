@@ -109,6 +109,8 @@ fn main() {
         return
     }
 
+    println!("{:#?}", ast.ast.body);
+
     CodeGen::compile(&ast.ast, Path::new(&args.output), &format, args.emit_ir, &target);
 }
 pub fn to_mut_ptr<T>(a: &T) -> &mut T {

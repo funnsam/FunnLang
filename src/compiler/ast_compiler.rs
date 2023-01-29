@@ -202,18 +202,29 @@ impl<'ctx> CodeGen<'ctx> {
 
                     self.builder.position_at_end(end_blk);
                 }
-                Node::AsmBlock(asm, par, _args) => {
-                    let asm_fn = self.context.void_type().fn_type(&args, false);
+                Node::AsmBlock(asm, parm) => {
+                    let parm = parm.to_owned().unwrap_or(("".to_owned(), vec![]));
+
+                    let mut typs  = Vec::with_capacity(parm.1.len());
+                    let mut exprs = Vec::with_capacity(parm.1.len());
+
+                    for i in &parm.1 {
+                        let typ = self.as_llvm_type(&i.0);
+                        typs.push(BasicMetadataTypeEnum::try_from(typ).unwrap());
+                        exprs.push(BasicMetadataValueEnum::try_from(self.compile_expr(&i.1, &typ.try_into().unwrap())).unwrap())
+                    }
+
+                    let asm_fn = self.context.void_type().fn_type(typs.as_slice(), false);
                     let asm = self.context.create_inline_asm(
                         asm_fn,
                         asm.to_owned(),
-                        par.to_owned(),
+                        parm.0,
                         true,
                         false,
                         None,
                         false
                     );
-                    self.builder.build_indirect_call(asm_fn, asm, &args, "asmblk");
+                    self.builder.build_indirect_call(asm_fn, asm, exprs.as_slice(), "asmblk");
                 }
                 _ => todo!()
             }

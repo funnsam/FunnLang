@@ -1,8 +1,4 @@
-@import "*std/?/io"
-
 func pub main() int {
-    for (i int: 'A'..'Z') {
-        putchar(i);
-    }
+    asm "syscall" "r{eax}{edi}" (i64, i64) (1, 0);
     return 0;
 }

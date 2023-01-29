@@ -200,35 +200,66 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
                     "asm" => {
                         let asm_blk = match p.buf.next().unwrap().kind {
                             Str(s) => s,
-                            _ => p.error(ErrorKind::ExpectsButFound { expect: Str("".to_owned()), found: p.buf.current().unwrap().kind })
+                            _ => {p.error(ErrorKind::ExpectsButFound { expect: Str("".to_owned()), found: p.buf.current().unwrap().kind }); "".to_owned()}
                         };
                         match p.buf.next().unwrap().kind {
                             SemiColon => {
                                 p.add_node(Node::AsmBlock(
-                                    asm_blk, "".to_owned(), None
+                                    asm_blk, None
                                 ))
                             },
-                            // Str(s) => {
-                            //     let mut raw_args: Vec<Vec<Token>> = vec![Vec::new()];
-                                
-                            //     while let Some(a) = p.buf.next() {
-                            //         match a.kind {
-                            //             RParenthesis => break,
-                            //             Comma => raw_args.push(Vec::new()),
-                            //             _ => raw_args.last_mut().unwrap().push(a),
-                            //         }
-                            //     }
-                                
-                            //     let mut args: Vec<Expr> = Vec::new();
-                            //     for el in raw_args.into_iter() {
-                            //         if !el.is_empty() {
-                            //             args.push(parse_expr(&mut Buffer::new(el), &mut p))
-                            //         }
-                            //     }
+                            Str(s) => {
+                                match p.buf.next().unwrap().kind {
+                                    LParenthesis => (),
+                                    _ => p.error(ErrorKind::ExpectsButFound { expect: LParenthesis, found: p.buf.current().unwrap().kind })
+                                }
 
-                            //     p.expect_semicolon();
-                            //     p.add_node(Node::AsmBlock(asm_blk, s, Some(args)))
-                            // },
+                                let mut args = Vec::new();
+
+                                let mut raw_typs: Vec<Vec<Token>> = Vec::new();
+                                let mut tmp: Vec<Token> = Vec::with_capacity(2);
+                                while let Some(t) = p.buf.next() {
+                                    if t.kind == RParenthesis {
+                                        if !tmp.is_empty() {raw_typs.push(tmp.clone())}
+                                        p.buf.advance();
+                                        break;
+                                    } else if t.kind == Comma {
+                                        raw_typs.push(tmp.clone());
+                                        tmp.clear()
+                                    } else {
+                                        tmp.push(t)
+                                    }
+                                }
+                                drop(tmp);
+
+                                for el in raw_typs.iter_mut() {
+                                    let typ = parse_type(&mut Buffer::new(el.to_owned()), &mut p);
+                                    args.push((typ, Expr::Number(0)));
+                                }
+
+                                let mut raw_exprs: Vec<Vec<Token>> = Vec::new();
+                                let mut tmp: Vec<Token> = Vec::with_capacity(2);
+                                while let Some(t) = p.buf.next() {
+                                    if t.kind == RParenthesis {
+                                        if !tmp.is_empty() {raw_exprs.push(tmp.clone())}
+                                        break;
+                                    } else if t.kind == Comma {
+                                        raw_exprs.push(tmp.clone());
+                                        tmp.clear()
+                                    } else {
+                                        tmp.push(t)
+                                    }
+                                }
+                                drop(tmp);
+
+                                for (i, el) in raw_exprs.iter_mut().enumerate() {
+                                    let expr = parse_expr(&mut Buffer::new(el.to_owned()), &mut p);
+                                    args[i].1 = expr;
+                                }
+
+                                p.expect_semicolon();
+                                p.add_node(Node::AsmBlock(asm_blk, Some((s, args))))
+                            },
                             _ => p.error(ErrorKind::UnexpectedToken { found: p.buf.current().unwrap().kind })
                         }
                     },
