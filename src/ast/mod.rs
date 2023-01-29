@@ -200,12 +200,37 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
                     "asm" => {
                         let asm_blk = match p.buf.next().unwrap().kind {
                             Str(s) => s,
-                            _ => panic!()
+                            _ => p.error(ErrorKind::ExpectsButFound { expect: Str("".to_owned()), found: p.buf.current().unwrap().kind })
                         };
-                        p.expect_semicolon();
-                        p.add_node(Node::AsmBlock(
-                            asm_blk
-                        ))
+                        match p.buf.next().unwrap().kind {
+                            SemiColon => {
+                                p.add_node(Node::AsmBlock(
+                                    asm_blk, "".to_owned(), None
+                                ))
+                            },
+                            // Str(s) => {
+                            //     let mut raw_args: Vec<Vec<Token>> = vec![Vec::new()];
+                                
+                            //     while let Some(a) = p.buf.next() {
+                            //         match a.kind {
+                            //             RParenthesis => break,
+                            //             Comma => raw_args.push(Vec::new()),
+                            //             _ => raw_args.last_mut().unwrap().push(a),
+                            //         }
+                            //     }
+                                
+                            //     let mut args: Vec<Expr> = Vec::new();
+                            //     for el in raw_args.into_iter() {
+                            //         if !el.is_empty() {
+                            //             args.push(parse_expr(&mut Buffer::new(el), &mut p))
+                            //         }
+                            //     }
+
+                            //     p.expect_semicolon();
+                            //     p.add_node(Node::AsmBlock(asm_blk, s, Some(args)))
+                            // },
+                            _ => p.error(ErrorKind::UnexpectedToken { found: p.buf.current().unwrap().kind })
+                        }
                     },
                     "return" => {
                         let expr = match p.buf.buf.peek().unwrap().kind {

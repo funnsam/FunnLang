@@ -202,18 +202,18 @@ impl<'ctx> CodeGen<'ctx> {
 
                     self.builder.position_at_end(end_blk);
                 }
-                Node::AsmBlock(asm) => {
-                    let asm_fn = self.context.void_type().fn_type(&[], false);
+                Node::AsmBlock(asm, par, _args) => {
+                    let asm_fn = self.context.void_type().fn_type(&args, false);
                     let asm = self.context.create_inline_asm(
                         asm_fn,
                         asm.to_owned(),
-                        "".to_owned(),
+                        par.to_owned(),
                         true,
                         false,
                         None,
                         false
                     );
-                    self.builder.build_indirect_call(asm_fn, asm, &[], "asmblk");
+                    self.builder.build_indirect_call(asm_fn, asm, &args, "asmblk");
                 }
                 _ => todo!()
             }

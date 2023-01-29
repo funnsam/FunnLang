@@ -1,11 +1,13 @@
 @import "*std/?/io"
 
-func pub main() u8 {
-    var a u16 = 1;
-    var b u16 = 0;
+func pub main() int {
+    var a int = 1;
+    var b int = 0;
     for (i int: 0..10) {
         a = b + a;
         b = a - b;
-        println_u(b -> uint);
+        // println(b);
+        // TODO: Printing & Strings
     }
+    return 0;
 }

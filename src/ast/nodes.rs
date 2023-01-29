@@ -62,7 +62,7 @@ pub enum Node {
         body: Vec<Program>
     },
     CodeBlock(Program),
-    AsmBlock(String),
+    AsmBlock(String, String, Option<Vec<Expr>>),
     Return(Option<Expr>)
 }
 
@@ -156,7 +156,7 @@ impl std::fmt::Display for Node {
                 => write!(f, "code block"),
             AsmBlock(_)
                 => write!(f, "assembly code block"),
-            Return(_)
+            Return(..)
                 => write!(f, "return")
         }
     }
