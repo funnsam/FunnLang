@@ -1,9 +1,7 @@
 @import "*std/?/io"
+@import "*libc/stdlib"
 
 func pub main() int {
-    for (i int: 0..10) {
-        continue;
-        putchar('a');
-    }
-    return 0;
+    exit(0);
+    return 1;
 }

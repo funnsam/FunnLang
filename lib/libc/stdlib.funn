@@ -1,0 +1,8 @@
+func extern abort() void;
+func extern abs(int) int;
+// TODO
+func extern exit(int) void;
+// TODO
+func extern rand() int;
+func extern srand(int) void;
+// TODO
