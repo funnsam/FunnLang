@@ -13,13 +13,15 @@ ifeq ($(OS), Windows_NT)
 	DDNAME = target/debug/funnlang.exe
 endif
 
+THREADS = $(shell nproc)
+
 build:
-	cargo build -r -j128
+	cargo build -r -j$(THREADS)
 	-rm $(TNAME) -f
 	-cp $(DNAME) .
 
 debug:
-	cargo build -j128
+	cargo build -j$(THREADS)
 	-rm $(TNAME) -f
 	-cp $(DDNAME) .
 

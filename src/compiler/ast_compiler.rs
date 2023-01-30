@@ -47,9 +47,9 @@ impl<'ctx> CodeGen<'ctx> {
         
         codegen.compile_ast(ast);
 
-        if emit_ir {
-            codegen.module.print_to_stderr();
-        }
+        // if emit_ir {
+        //     codegen.module.print_to_stderr();
+        // }
 
         initialize(target);
         codegen.write(path, filetype);
@@ -247,9 +247,11 @@ impl<'ctx> CodeGen<'ctx> {
                 },
                 Node::Break => {
                     self.builder.build_unconditional_branch(self.loops.last().unwrap().1);
+                    break;
                 },
                 Node::Continue => {
                     self.builder.build_unconditional_branch(self.loops.last().unwrap().0);
+                    break;
                 },
                 Node::Branch { cond, body } => {
                     let mut all = Vec::new();
@@ -273,8 +275,9 @@ impl<'ctx> CodeGen<'ctx> {
 
                     if cond.len() != body.len() {
                         self.compile_ast(body.last().unwrap());
-                        self.builder.build_unconditional_branch(after_all);
                     }
+
+                    self.builder.build_unconditional_branch(after_all);
 
                     for i in &all {
                         self.builder.position_at_end(*i);
