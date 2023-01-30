@@ -100,13 +100,23 @@ impl<'ctx> CodeGen<'ctx> {
         for statement in &ast.body {
             match statement {
                 Node::FuncDefine { func_name, func_args, func_type, func_body, linkage } => {
-                    let ty = Self::as_fn_type(self.as_llvm_type(func_type), self.args_to_metadata(func_args));
+                    let args = self.args_to_metadata(func_args);
+                    let ty = Self::as_fn_type(self.as_llvm_type(func_type), args);
                     let func = self.module.add_function(func_name, ty, linkage.as_inkwell_linkage());
 
                     if *linkage != InternLinkage::Extern {
                         self.cur_fn = Some(func);
                         let alloca_entry = self.context.append_basic_block(func, "__var_allocs");
                         let entry = self.context.append_basic_block(func, "__entry");
+
+                        self.builder.position_at_end(alloca_entry);
+                        let parms = func.get_params();
+                        let types = ty.get_param_types();
+                        for (i, el) in (*func_args).iter().enumerate() {
+                            let a = self.builder.build_alloca(types[i], &format!("fn_arg_{}", &el.name));
+                            self.builder.build_store(a, parms[i]);
+                            self.vars.last_mut().unwrap().insert(el.name.to_owned(), (a, types[i].as_any_type_enum()));
+                        }
 
                         self.builder.position_at_end(entry);
                         self.compile_ast(func_body);
@@ -330,11 +340,19 @@ impl<'ctx> CodeGen<'ctx> {
                     CompOp::GT  => IntPredicate::UGT,
                     CompOp::GTE => IntPredicate::UGE,
                 }, lhs, rhs, "comparason")
-            }
+            },
             Expr::Cast { typ, val } => {
                 let val = self.compile_expr(val, prefer);
                 let typ = self.as_llvm_type(typ);
                 self.builder.build_cast(InstructionOpcode::BitCast, val, BasicTypeEnum::try_from(typ).unwrap(), "cast").into_int_value()
+            },
+            Expr::Function { name, args: _args } => {
+                let func = self.module.get_function(name.as_str());
+                let mut args = Vec::with_capacity(_args.len());
+                for i in _args.iter() {
+                    args.push(BasicMetadataValueEnum::try_from(self.compile_expr(i, prefer)).unwrap())
+                }
+                self.builder.build_call(func.unwrap(), args.as_slice(), &format!("call_{name}")).try_as_basic_value().unwrap_left().into_int_value()
             },
             _ => todo!()
         }

@@ -1,21 +1,18 @@
 @import "*std/?/io"
 @import "*libc/stdlib"
 
+func plz_char(i int) int {
+    if ((i == 5) | (i == 7)) {
+        return i + 0x30;
+    } else if (i == 6) {
+        return i + 0x50;
+    }
+    return i + 0x40;
+}
+
 func pub main() int {
     for (i int: 0..9) {
-        if ((i == 5) | (i == 7)) {
-            putchar(i + 0x30);
-            continue;
-            putchar('!');
-        } else if (i == 6) {
-            putchar(i + 0x50);
-            break;
-            putchar('!');
-        } else {
-            putchar(i + 0x40);
-            continue;
-            putchar('!');
-        }
+        putchar(plz_char(i);
     }
     return 0;
 }
