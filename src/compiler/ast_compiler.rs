@@ -47,6 +47,10 @@ impl<'ctx> CodeGen<'ctx> {
         
         codegen.compile_ast(ast);
 
+        if emit_ir {
+            codegen.module.print_to_stderr();
+        }
+
         initialize(target);
         codegen.write(path, filetype);
 
@@ -164,8 +168,12 @@ impl<'ctx> CodeGen<'ctx> {
                     self.compile_ast(body);
                     self.builder.build_unconditional_branch(cond_blk);
 
-                    self.builder.position_at_end(end_blk);
                     self.loops.pop();
+
+                    let trueend = self.context.append_basic_block(self.cur_fn.unwrap(), "__while_true_end");
+                    self.builder.position_at_end(end_blk);
+                    self.builder.build_unconditional_branch(trueend);
+                    self.builder.position_at_end(trueend);
                 },
                 Node::For { loopv, ty, from, to, body, downward } => {
                     let ty = BasicTypeEnum::try_from(self.as_llvm_type(ty)).unwrap().to_owned();
@@ -206,8 +214,12 @@ impl<'ctx> CodeGen<'ctx> {
                     self.compile_ast(body);
                     self.builder.build_unconditional_branch(cond_blk);
 
-                    self.builder.position_at_end(end_blk);
                     self.loops.pop();
+
+                    let trueend = self.context.append_basic_block(self.cur_fn.unwrap(), "__for_true_end");
+                    self.builder.position_at_end(end_blk);
+                    self.builder.build_unconditional_branch(trueend);
+                    self.builder.position_at_end(trueend);
                 }
                 Node::AsmBlock(asm, parm) => {
                     let parm = parm.to_owned().unwrap_or(("".to_owned(), vec![]));
@@ -238,6 +250,38 @@ impl<'ctx> CodeGen<'ctx> {
                 },
                 Node::Continue => {
                     self.builder.build_unconditional_branch(self.loops.last().unwrap().0);
+                },
+                Node::Branch { cond, body } => {
+                    let mut all = Vec::new();
+                    for (i, el) in cond.iter().enumerate() {
+                        let expr = self.compile_expr(el, &self.context.i32_type().try_into().unwrap());
+
+                        let body_blk = self.context.append_basic_block(self.cur_fn.unwrap(), "__if_body");
+                        let end_blk  = self.context.append_basic_block(self.cur_fn.unwrap(), "__if_end");
+
+                        self.builder.build_conditional_branch(expr, body_blk, end_blk);
+                        self.builder.position_at_end(body_blk);
+                        
+                        self.compile_ast(&body[i]);
+
+                        self.builder.position_at_end(end_blk);
+
+                        all.push(body_blk);
+                    }
+
+                    let after_all = self.context.append_basic_block(self.cur_fn.unwrap(), "__after_if");
+
+                    if cond.len() != body.len() {
+                        self.compile_ast(body.last().unwrap());
+                        self.builder.build_unconditional_branch(after_all);
+                    }
+
+                    for i in &all {
+                        self.builder.position_at_end(*i);
+                        self.builder.build_unconditional_branch(after_all);
+                    }
+
+                    self.builder.position_at_end(after_all);
                 },
                 _ => todo!()
             }

@@ -2,6 +2,20 @@
 @import "*libc/stdlib"
 
 func pub main() int {
-    exit(0);
-    return 1;
+    for (i int: 0..9) {
+        if ((i == 5) | (i == 7)) {
+            putchar(i + 0x30);
+            continue;
+            putchar('!');
+        } else if (i == 6) {
+            putchar(i + 0x50);
+            break;
+            putchar('!');
+        } else {
+            putchar(i + 0x40);
+            continue;
+            putchar('!');
+        }
+    }
+    return 0;
 }
