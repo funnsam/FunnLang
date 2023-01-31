@@ -270,6 +270,7 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
                     LParenthesis => {
                         let mut args = Vec::new();
                         while let Some(_) = p.buf.next() {
+                            p.buf.buf.index -= 1;
                             args.push(parse_expr_from_parser(&mut p, &vec![Comma, RParenthesis]));
 
                             match p.buf.current().unwrap().kind {
@@ -373,7 +374,6 @@ fn parse_expr_from_parser(p: &mut Parser, stop_tokens: &Vec<TokenKind>) -> Expr 
 }
 
 fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
-    println!("{:?}", toks.data);
     #[derive(Debug, Clone, PartialEq)]
     enum ExprTmp {
         Number(i64),

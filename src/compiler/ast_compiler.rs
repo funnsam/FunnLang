@@ -129,7 +129,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Node::Return(val) => {
                     match val {
                         Some(val) => {
-                            let e = self.compile_expr(val, &self.cur_fn.unwrap().get_type().get_return_type().unwrap());
+                            let e = self.compile_expr(val, &self.cur_fn.unwrap().get_type().get_return_type().unwrap()).into_int_value();
                             self.builder.build_return(Some(&e));
                         },
                         None => {
@@ -142,7 +142,7 @@ impl<'ctx> CodeGen<'ctx> {
                     let func = self.module.get_function(func_name).unwrap();
                     let mut args = Vec::with_capacity(func_args.len());
                     for (i, expr) in func_args.iter().enumerate() {
-                        let expr = self.compile_expr(expr, &func.get_type().get_param_types()[i]);
+                        let expr = self.compile_expr(expr, &func.get_type().get_param_types()[i]).into_int_value();
                         args.push(BasicMetadataValueEnum::IntValue(expr));
                     }
                     self.builder.build_call(func, args.as_slice(), func_name);
@@ -157,7 +157,7 @@ impl<'ctx> CodeGen<'ctx> {
                     );
                     self.vars.last_mut().unwrap().insert(var_name.to_owned(), (alloca, typ));
                     self.builder.position_at_end(self.cur_fn.unwrap().get_last_basic_block().unwrap());
-                    let val = self.compile_expr(val_expr, &typ.try_into().unwrap());
+                    let val = self.compile_expr(val_expr, &typ.try_into().unwrap()).into_int_value();
                     self.builder.build_store(alloca, val);
                 },
                 Node::VarAssign { var_name, val_expr } => {
@@ -172,7 +172,7 @@ impl<'ctx> CodeGen<'ctx> {
                     self.loops.push((cond_blk, end_blk));
                     
                     self.builder.position_at_end(cond_blk);
-                    let cond = self.compile_expr(cond, &self.context.i32_type().try_into().unwrap());
+                    let cond = self.compile_expr(cond, &self.context.i32_type().try_into().unwrap()).into_int_value();
                     self.builder.build_conditional_branch(cond, body_blk, end_blk);
                     
                     self.builder.position_at_end(body_blk);
@@ -188,8 +188,8 @@ impl<'ctx> CodeGen<'ctx> {
                 },
                 Node::For { loopv, ty, from, to, body, downward } => {
                     let ty = BasicTypeEnum::try_from(self.as_llvm_type(ty)).unwrap().to_owned();
-                    let from = self.compile_expr(from, &ty);
-                    let to = self.compile_expr(to, &ty);
+                    let from = self.compile_expr(from, &ty).into_int_value();
+                    let to = self.compile_expr(to, &ty).into_int_value();
 
                     let aloc_blk = self.context.append_basic_block(self.cur_fn.unwrap(), "__for_alloc_blk");
                     let cond_blk = self.context.append_basic_block(self.cur_fn.unwrap(), "__for_cond_blk");
@@ -206,14 +206,14 @@ impl<'ctx> CodeGen<'ctx> {
                     self.builder.build_unconditional_branch(body_blk);
                     self.builder.position_at_end(cond_blk);
 
-                    let lc = self.builder.build_load(ty, loopcounter, "lc_tmp");
+                    let lc = self.builder.build_load(ty, loopcounter, "lc_tmp").into_int_value();
                     let ok = if !downward {
-                        let tmp = self.builder.build_int_add(lc.into_int_value(), ty.into_int_type().const_int(1, true), "lc_inc");
+                        let tmp = self.builder.build_int_add(lc, ty.into_int_type().const_int(1, true), "lc_inc");
                         self.builder.build_store(loopcounter, tmp);
 
                         self.builder.build_int_compare(IntPredicate::ULT, lc.try_into().unwrap(), to, "lc_cmp")
                     } else {
-                        let tmp = self.builder.build_int_sub(lc.into_int_value(), ty.into_int_type().const_int(1, true), "lc_dec");
+                        let tmp = self.builder.build_int_sub(lc, ty.into_int_type().const_int(1, true), "lc_dec");
                         self.builder.build_store(loopcounter, tmp);
 
                         self.builder.build_int_compare(IntPredicate::UGT, lc.try_into().unwrap(), to, "lc_cmp")
@@ -241,7 +241,7 @@ impl<'ctx> CodeGen<'ctx> {
                     for i in &parm.1 {
                         let typ = self.as_llvm_type(&i.0);
                         typs.push(BasicMetadataTypeEnum::try_from(typ).unwrap());
-                        exprs.push(BasicMetadataValueEnum::try_from(self.compile_expr(&i.1, &typ.try_into().unwrap())).unwrap())
+                        exprs.push(BasicMetadataValueEnum::try_from(self.compile_expr(&i.1, &typ.try_into().unwrap()).into_int_value()).unwrap())
                     }
 
                     let asm_fn = self.context.void_type().fn_type(typs.as_slice(), false);
@@ -267,7 +267,7 @@ impl<'ctx> CodeGen<'ctx> {
                 Node::Branch { cond, body } => {
                     let mut all = Vec::new();
                     for (i, el) in cond.iter().enumerate() {
-                        let expr = self.compile_expr(el, &self.context.i32_type().try_into().unwrap());
+                        let expr = self.compile_expr(el, &self.context.i32_type().try_into().unwrap()).into_int_value();
 
                         let body_blk = self.context.append_basic_block(self.cur_fn.unwrap(), "__if_body");
                         let end_blk  = self.context.append_basic_block(self.cur_fn.unwrap(), "__if_end");
@@ -306,16 +306,16 @@ impl<'ctx> CodeGen<'ctx> {
         self.vars.pop();
     }
 
-    fn compile_expr(&mut self, expr: &Expr, prefer: &BasicTypeEnum<'ctx>) -> IntValue<'ctx> {
+    fn compile_expr(&mut self, expr: &Expr, prefer: &BasicTypeEnum<'ctx>) -> BasicValueEnum<'ctx> {
         match expr {
-            Expr::Number(v) => prefer.into_int_type().const_int(*v as u64, false),
+            Expr::Number(v) => prefer.into_int_type().const_int(*v as u64, false).try_into().unwrap(),
             Expr::Ident(v) => {
                 let var = self.vars.last().unwrap().get(v).unwrap();
-                self.builder.build_load(BasicTypeEnum::try_from(var.1).unwrap(), var.0, &format!("load_{v}")).into_int_value()
+                self.builder.build_load(BasicTypeEnum::try_from(var.1).unwrap(), var.0, &format!("load_{v}"))
             },
             Expr::BiOp { left, oper, right } => {
-                let lhs = self.compile_expr(left, prefer);
-                let rhs = self.compile_expr(right, prefer);
+                let lhs = self.compile_expr(left, prefer).into_int_value();
+                let rhs = self.compile_expr(right, prefer).into_int_value();
                 match oper {
                     BiOp::Add => self.builder.build_int_add(lhs, rhs, "add"),
                     BiOp::Sub => self.builder.build_int_sub(lhs, rhs, "sub"),
@@ -327,11 +327,11 @@ impl<'ctx> CodeGen<'ctx> {
                     BiOp::XOr => self.builder.build_xor(lhs, rhs, "xor"),
                     BiOp::LSh => self.builder.build_left_shift(lhs, rhs, "lsh"),
                     BiOp::RSh => self.builder.build_right_shift(lhs, rhs, false, "rsh")
-                }
+                }.try_into().unwrap()
             },
             Expr::CompOp { left, oper, right } => {
-                let lhs = self.compile_expr(left, prefer);
-                let rhs = self.compile_expr(right, prefer);
+                let lhs = self.compile_expr(left, prefer).into_int_value();
+                let rhs = self.compile_expr(right, prefer).into_int_value();
                 let rhs = self.builder.build_cast(
                     InstructionOpcode::BitCast, rhs, lhs.get_type(), "cmp_rhs_autocast"
                 ).into_int_value();
@@ -343,22 +343,30 @@ impl<'ctx> CodeGen<'ctx> {
                     CompOp::LTE => IntPredicate::ULE,
                     CompOp::GT  => IntPredicate::UGT,
                     CompOp::GTE => IntPredicate::UGE,
-                }, lhs, rhs, "comparason")
+                }, lhs, rhs, "comparason").try_into().unwrap()
             },
             Expr::Cast { typ, val } => {
-                let val = self.compile_expr(val, prefer);
+                let val = self.compile_expr(val, prefer).into_int_value();
                 let typ = self.as_llvm_type(typ);
-                self.builder.build_cast(InstructionOpcode::BitCast, val, BasicTypeEnum::try_from(typ).unwrap(), "cast").into_int_value()
+                self.builder.build_cast(InstructionOpcode::BitCast, val, BasicTypeEnum::try_from(typ).unwrap(), "cast")
             },
             Expr::Function { name, args: _args } => {
                 let func = self.module.get_function(name.as_str());
                 let mut args = Vec::with_capacity(_args.len());
                 for i in _args.iter() {
-                    args.push(BasicMetadataValueEnum::try_from(self.compile_expr(i, prefer)).unwrap())
+                    args.push(BasicMetadataValueEnum::try_from(self.compile_expr(i, prefer).into_int_value()).unwrap())
                 }
-                self.builder.build_call(func.unwrap(), args.as_slice(), &format!("call_{name}")).try_as_basic_value().unwrap_left().into_int_value()
+                self.builder.build_call(func.unwrap(), args.as_slice(), &format!("call_{name}")).try_as_basic_value().unwrap_left()
             },
-            _ => todo!()
+            Expr::UnaryOp { oper, val } => {
+                let val = self.compile_expr(val, prefer);
+                match oper {
+                    UnaryOp::Neg => self.builder.build_int_neg(val.into_int_value(), "neg").try_into().unwrap(),
+                    UnaryOp::Not => self.builder.build_not(val.into_int_value(), "not").try_into().unwrap(),
+                    UnaryOp::Drf => self.builder.build_load(*prefer, val.into_pointer_value(), "drf"),
+                    _ => todo!()
+                }
+            }
         }
     }
 
