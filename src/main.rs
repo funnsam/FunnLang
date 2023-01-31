@@ -41,6 +41,9 @@ struct Args {
 
     #[clap(long="emit-ir", value_name="Emit IR", default_value="false", action=ArgAction::Set)]
     emit_ir: bool,
+
+    #[clap(long="invoke-gcc", value_name="Invoke GCC", default_value="true", action=ArgAction::Set)]
+    auto_compile: bool,
 }
 
 pub enum CompilerTarget {
@@ -112,6 +115,19 @@ fn main() {
     println!("{:#?}", ast.ast.body);
 
     CodeGen::compile(&ast.ast, Path::new(&args.output), &format, args.emit_ir, &target);
+
+    if args.auto_compile {
+        let status = std::process::Command::new("gcc")
+        .arg(&args.output)
+        .arg("-o")
+        .arg(&format!("{}.temp", &args.output))
+        .status()
+        .unwrap();
+        if !status.success() {
+            todo!("GCC returned {status}")
+        }
+        std::fs::rename(&format!("{}.temp", &args.output), &args.output).unwrap();
+    }
 }
 pub fn to_mut_ptr<T>(a: &T) -> &mut T {
     unsafe {
