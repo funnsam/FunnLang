@@ -36,14 +36,11 @@ struct Args {
     #[clap(short, long, value_name="Output file")]
     output: Option<String>,
 
-    #[clap(long, default_value="object")]
+    #[clap(long, default_value="exec")]
     format: String,
 
     #[clap(long="emit-ir", value_name="Emit IR", default_value="false", action=ArgAction::Set)]
     emit_ir: bool,
-
-    #[clap(long="invoke-gcc", value_name="Invoke GCC", default_value="true", action=ArgAction::Set)]
-    auto_compile: bool,
 }
 
 pub enum CompilerTarget {
@@ -92,7 +89,7 @@ fn main() {
     };
 
     let format = match args.format.as_str() {
-        "object" => FileType::Object,
+        "object" | "exec" | "executable" => FileType::Object,
         "asm" | "assembly" => FileType::Assembly,
         _ => {
             println!("\x1b[1;31merror:\x1b[0m unsupported output format '{}' had been specified\x1b[0m", args.format);
@@ -101,9 +98,15 @@ fn main() {
     };
 
     let output = args.output.unwrap_or(
-        match args.auto_compile {
-            true    => "a.out".to_owned() + std::env::consts::EXE_SUFFIX,
-            false   => "out.o".to_owned()
+        match args.format.as_str() {
+            "exec" | "executable"
+                => "a.out".to_owned() + std::env::consts::EXE_SUFFIX,
+            "object"
+                => "out.o".to_owned(),
+            "asm" | "assembly"
+                => "out.s".to_owned(),
+            _
+                => unreachable!()
         }
     );
     
@@ -123,7 +126,7 @@ fn main() {
 
     CodeGen::compile(&ast.ast, Path::new(&output), &format, args.emit_ir, &target);
 
-    if args.auto_compile {
+    if matches!(args.format.as_str(), "exec" | "executable") {
         let status = std::process::Command::new("gcc")
         .arg(&output)
         .arg("-o")
