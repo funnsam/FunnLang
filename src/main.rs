@@ -33,8 +33,8 @@ struct Args {
     #[clap(short, long, default_value="auto")]
     target: String,
 
-    #[clap(short, long, default_value="out.o", value_name="Output file")]
-    output: String,
+    #[clap(short, long, value_name="Output file")]
+    output: Option<String>,
 
     #[clap(long, default_value="object")]
     format: String,
@@ -99,6 +99,13 @@ fn main() {
             exit(1)
         }
     };
+
+    let output = args.output.unwrap_or(
+        match args.auto_compile {
+            true    => "a.out".to_owned() + std::env::consts::EXE_SUFFIX,
+            false   => "out.o".to_owned()
+        }
+    );
     
     let src = std::fs::read_to_string(args.input_file.clone()).expect("F");
     
@@ -114,19 +121,19 @@ fn main() {
 
     println!("{:#?}", ast.ast.body);
 
-    CodeGen::compile(&ast.ast, Path::new(&args.output), &format, args.emit_ir, &target);
+    CodeGen::compile(&ast.ast, Path::new(&output), &format, args.emit_ir, &target);
 
     if args.auto_compile {
         let status = std::process::Command::new("gcc")
-        .arg(&args.output)
+        .arg(&output)
         .arg("-o")
-        .arg(&format!("{}.temp", &args.output))
+        .arg(&format!("{}.temp", &output))
         .status()
         .unwrap();
         if !status.success() {
             todo!("GCC returned {status}")
         }
-        std::fs::rename(&format!("{}.temp", &args.output), &args.output).unwrap();
+        std::fs::rename(&format!("{}.temp", &output), &output).unwrap();
     }
 }
 pub fn to_mut_ptr<T>(a: &T) -> &mut T {
