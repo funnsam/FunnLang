@@ -216,45 +216,23 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
 
                                 let mut args = Vec::new();
 
-                                let mut raw_typs: Vec<Vec<Token>> = Vec::new();
-                                let mut tmp: Vec<Token> = Vec::with_capacity(2);
-                                while let Some(t) = p.buf.next() {
-                                    if t.kind == RParenthesis {
-                                        if !tmp.is_empty() {raw_typs.push(tmp.clone())}
-                                        p.buf.advance();
-                                        break;
-                                    } else if t.kind == Comma {
-                                        raw_typs.push(tmp.clone());
-                                        tmp.clear()
-                                    } else {
-                                        tmp.push(t)
+                                while let Some(_) = p.buf.next() {
+                                    args.push((parse_type_from_parser(&mut p, &vec![Comma, RParenthesis]), Expr::Number(0)));
+
+                                    match p.buf.current().unwrap().kind {
+                                        RParenthesis => break,
+                                        _ => ()
                                     }
                                 }
-                                drop(tmp);
 
-                                for el in raw_typs.iter_mut() {
-                                    let typ = parse_type(&mut Buffer::new(el.to_owned()), &mut p);
-                                    args.push((typ, Expr::Number(0)));
-                                }
+                                let mut i = 0;
+                                while let Some(_) = p.buf.next() {
+                                    args[i].1 = parse_expr_from_parser(&mut p, &vec![Comma, RParenthesis]);
 
-                                let mut raw_exprs: Vec<Vec<Token>> = Vec::new();
-                                let mut tmp: Vec<Token> = Vec::with_capacity(2);
-                                while let Some(t) = p.buf.next() {
-                                    if t.kind == RParenthesis {
-                                        if !tmp.is_empty() {raw_exprs.push(tmp.clone())}
-                                        break;
-                                    } else if t.kind == Comma {
-                                        raw_exprs.push(tmp.clone());
-                                        tmp.clear()
-                                    } else {
-                                        tmp.push(t)
+                                    match p.buf.current().unwrap().kind {
+                                        RParenthesis => break,
+                                        _ => i += 1
                                     }
-                                }
-                                drop(tmp);
-
-                                for (i, el) in raw_exprs.iter_mut().enumerate() {
-                                    let expr = parse_expr(&mut Buffer::new(el.to_owned()), &mut p);
-                                    args[i].1 = expr;
                                 }
 
                                 p.expect_semicolon();
@@ -290,20 +268,13 @@ pub fn generate_ast(tok: &Buffer<Token>) -> Parser {
                         );
                     },
                     LParenthesis => {
-                        let mut raw_args: Vec<Vec<Token>> = vec![Vec::new()];
-                        
-                        while let Some(a) = p.buf.next() {
-                            match a.kind {
+                        let mut args = Vec::new();
+                        while let Some(_) = p.buf.next() {
+                            args.push(parse_expr_from_parser(&mut p, &vec![Comma, RParenthesis]));
+
+                            match p.buf.current().unwrap().kind {
                                 RParenthesis => break,
-                                Comma => raw_args.push(Vec::new()),
-                                _ => raw_args.last_mut().unwrap().push(a),
-                            }
-                        }
-                        
-                        let mut args: Vec<Expr> = Vec::new();
-                        for el in raw_args.into_iter() {
-                            if !el.is_empty() {
-                                args.push(parse_expr(&mut Buffer::new(el), &mut p))
+                                _ => ()
                             }
                         }
 
@@ -402,6 +373,7 @@ fn parse_expr_from_parser(p: &mut Parser, stop_tokens: &Vec<TokenKind>) -> Expr 
 }
 
 fn parse_expr(toks: &mut Buffer<Token>, p: &mut Parser) -> Expr {
+    println!("{:?}", toks.data);
     #[derive(Debug, Clone, PartialEq)]
     enum ExprTmp {
         Number(i64),

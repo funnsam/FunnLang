@@ -13,8 +13,8 @@ func plz_char(i int) int {
 }
 
 func pub main() int {
-    for (i int: 0..10) {
-        putchar(plz_char(i);
+    for (i int: 0..9) {
+        putchar(plz_char(i));
     }
     return 0;
 }
