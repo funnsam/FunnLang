@@ -47,9 +47,9 @@ impl<'ctx> CodeGen<'ctx> {
         
         codegen.compile_ast(ast);
 
-        // if emit_ir {
-        //     codegen.module.print_to_stderr();
-        // }
+        if emit_ir {
+            codegen.module.print_to_stderr();
+        }
 
         initialize(target);
         codegen.write(path, filetype);
@@ -136,6 +136,7 @@ impl<'ctx> CodeGen<'ctx> {
                             self.builder.build_return(None);
                         }
                     };
+                    break;
                 },
                 Node::FuncCall { func_name, func_args } => {
                     let func = self.module.get_function(func_name).unwrap();
@@ -276,9 +277,8 @@ impl<'ctx> CodeGen<'ctx> {
                         
                         self.compile_ast(&body[i]);
 
+                        all.push(self.builder.get_insert_block().unwrap());
                         self.builder.position_at_end(end_blk);
-
-                        all.push(body_blk);
                     }
 
                     let after_all = self.context.append_basic_block(self.cur_fn.unwrap(), "__after_if");
@@ -287,11 +287,15 @@ impl<'ctx> CodeGen<'ctx> {
                         self.compile_ast(body.last().unwrap());
                     }
 
-                    self.builder.build_unconditional_branch(after_all);
+                    if matches!(self.builder.get_insert_block().unwrap().get_terminator(), None) {
+                        self.builder.build_unconditional_branch(after_all);
+                    }
 
                     for i in &all {
-                        self.builder.position_at_end(*i);
-                        self.builder.build_unconditional_branch(after_all);
+                        if matches!((*i).get_terminator(), None) {
+                            self.builder.position_at_end(*i);
+                            self.builder.build_unconditional_branch(after_all);
+                        }
                     }
 
                     self.builder.position_at_end(after_all);

@@ -6,12 +6,14 @@ func plz_char(i int) int {
         return i + 0x30;
     } else if (i == 6) {
         return i + 0x50;
+    } else if (i == 10) {
+        return '\n';
     }
     return i + 0x40;
 }
 
 func pub main() int {
-    for (i int: 0..9) {
+    for (i int: 0..10) {
         putchar(plz_char(i);
     }
     return 0;
