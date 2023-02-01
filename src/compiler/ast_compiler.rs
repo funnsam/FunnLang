@@ -203,17 +203,26 @@ impl<'ctx> CodeGen<'ctx> {
                     self.builder.build_store(loopcounter, from);
                     self.vars.last_mut().unwrap().insert(loopv.to_owned(), (loopcounter, ty.as_any_type_enum()));
 
-                    self.builder.build_unconditional_branch(body_blk);
+                    let ok = if !downward {
+                        self.builder.build_int_compare(IntPredicate::ULT, from.try_into().unwrap(), to, "lc_cmp")
+                    } else {
+                        self.builder.build_int_compare(IntPredicate::UGT, from.try_into().unwrap(), to, "lc_cmp")
+                    };
+
+                    self.builder.build_conditional_branch(ok, body_blk, end_blk);
+
                     self.builder.position_at_end(cond_blk);
 
                     let lc = self.builder.build_load(ty, loopcounter, "lc_tmp").into_int_value();
+                    let one = lc.get_type().const_int(1, false);
+
                     let ok = if !downward {
-                        let tmp = self.builder.build_int_add(lc, ty.into_int_type().const_int(1, true), "lc_inc");
+                        let tmp = self.builder.build_int_add(lc, one, "lc_inc");
                         self.builder.build_store(loopcounter, tmp);
 
                         self.builder.build_int_compare(IntPredicate::ULT, lc.try_into().unwrap(), to, "lc_cmp")
                     } else {
-                        let tmp = self.builder.build_int_sub(lc, ty.into_int_type().const_int(1, true), "lc_dec");
+                        let tmp = self.builder.build_int_sub(lc, one, "lc_dec");
                         self.builder.build_store(loopcounter, tmp);
 
                         self.builder.build_int_compare(IntPredicate::UGT, lc.try_into().unwrap(), to, "lc_cmp")

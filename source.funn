@@ -16,5 +16,8 @@ func pub main() int {
     for (i int: 0..10) {
         putchar(plz_char(i));
     }
+    for (i int: 30..10) {   // plz work
+        putchar(plz_char(i));
+    }
     return 0;
 }
