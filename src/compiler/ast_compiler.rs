@@ -309,7 +309,9 @@ impl<'ctx> CodeGen<'ctx> {
 
                     self.builder.position_at_end(after_all);
                 },
-                _ => todo!()
+                Node::CodeBlock(c) => {
+                    self.compile_ast(c)
+                },
             }
         }
         self.vars.pop();
@@ -393,10 +395,17 @@ impl<'ctx> CodeGen<'ctx> {
                         => AnyTypeEnum::IntType(self.context.i32_type()),
                     "i64"
                         => AnyTypeEnum::IntType(self.context.i64_type()),
+                    "i128"
+                        => AnyTypeEnum::IntType(self.context.i128_type()),
                     _ => panic!()
                 }
+            },
+            Type::Pointer(typ) => {
+                AnyTypeEnum::PointerType(BasicTypeEnum::try_from(self.as_llvm_type(typ)).unwrap().ptr_type(AddressSpace::default()))
+            },
+            Type::Array(typ, size) => {
+                AnyTypeEnum::ArrayType(BasicTypeEnum::try_from(self.as_llvm_type(typ)).unwrap().array_type(*size as u32))
             }
-            _ => todo!()
         }
     }
 
