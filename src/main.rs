@@ -134,7 +134,7 @@ fn main() {
         .status()
         .unwrap();
         if !status.success() {
-            todo!("GCC returned {status}")
+            println!("\x1b[1;31merror:\x1b[0m gcc returned error code {}.\x1b[0m", status);
         }
         std::fs::rename(&format!("{}.temp", &output), &output).unwrap();
     }
